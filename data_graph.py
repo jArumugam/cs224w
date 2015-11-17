@@ -3,6 +3,7 @@
 import psycopg2
 import snap
 import sys
+from datetime import date
 
 DB_NAME = "kulshrax"
 DB_USER = "kulshrax"
@@ -45,7 +46,7 @@ def add_edges(cur, graph):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.parent_id = t2.id
-               WHERE t1.post_type_id = 2 and t2.post_type_id = 1;
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
             """
 
     cur.execute(query)
@@ -53,6 +54,46 @@ def add_edges(cur, graph):
         if src is None or dst is None:
             continue
         graph.AddEdge(src, dst)
+
+
+def add_edges_time_slice(cur, graph, start_date, end_date):
+    """Add a directed edge between each pair of nodes where the source
+       user answered a question asked by the destination user.
+    """
+
+    query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.parent_id = t2.id
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
+            """
+
+    cur.execute(query, {'start_date': start_date, 'end_date': end_date})
+    for src, dst in results(cur):
+        if src is None or dst is None:
+            continue
+        graph.AddEdge(src, dst)
+
+
+def get_top_user_ids(cur, percentile=.1):
+    """Get the ids of the top users ranked by reputation."""
+    cur.execute("SELECT count(*) FROM se_user;")
+    count = cur.fetchone()[0]
+    limit = int(count * percentile)
+    query = "SELECT id FROM se_user ORDER BY reputation DESC LIMIT %s"
+    cur.execute(query, (limit,))
+    return [i[0] for i in results(cur)]
+
+
+def build_graph_time_slice(cur, start, end):
+    graph = snap.TNGraph.New()
+    add_nodes(cur, graph)
+    add_edges_time_slice(cur, graph, start, end)
+    return graph
 
 
 def build_graph(cur):
