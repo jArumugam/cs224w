@@ -46,7 +46,7 @@ def add_nodes(cur, graph):
         graph.AddNode(user_id)
 
 
-def add_edges_answer_question(cur, graph, directed, weighted, weights, start_date, end_date):
+def add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights):
     """Add a directed edge between each pair of nodes where the source
        user answered a question asked by the destination user.
     """
@@ -63,7 +63,7 @@ def add_edges_answer_question(cur, graph, directed, weighted, weights, start_dat
             """
 
 
-        cur.execute(query)
+        cur.execute(query, {'start_date': start_date, 'end_date': end_date})
         for src, dst in results(cur):
             if src is None or dst is None:
                 continue
@@ -81,7 +81,7 @@ def add_edges_answer_question(cur, graph, directed, weighted, weights, start_dat
                AND t2.creation_Date < %(end_date)s;
             """
 
-        cur.execute(query)
+        cur.execute(query, {'start_date': start_date, 'end_date': end_date})
         for src, dst in results(cur):
             if src is None or dst is None:
                 continue
@@ -112,13 +112,13 @@ def build_graph_time_slice(cur, start, end):
     return graph
 
 
-def build_graph_answer_question(cur, directed=True, weighted=False, start_date, end_date):
+def build_graph_answer_question(cur, start_date, end_date, directed=True, weighted=False):
     graph = snap.TNGraph.New()
     if not directed:
         graph = snap.TUNGraph.New()
     add_nodes(cur, graph)
     weights = Counter()
-    add_edges_answer_question(cur, graph, directed, weighted, weights, start_date, end_date)
+    add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights)
     return (graph, weights)
 
 
