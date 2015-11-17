@@ -10,13 +10,14 @@ DB_NAME = "stackexchangedb"
 DB_USER = "postgres"
 
 TIME_BINS = [
-    (date(2012, 1, 1), date(2012, 7, 1))
-    (date(2012, 7, 1), date(2013, 1, 1))
-    (date(2013, 1, 1), date(2013, 7, 1))
-    (date(2013, 7, 1), date(2014, 1, 1))
-    (date(2014, 1, 1), date(2014, 7, 1))
-    (date(2014, 7, 1), date(2015, 1, 1))
+    (date(2012, 03, 1), date(2012, 10, 1)),
+    (date(2012, 10, 1), date(2013, 03, 1)),
+    (date(2013, 03, 1), date(2013, 10, 1)),
+    (date(2013, 10, 1), date(2014, 03, 1)),
+    (date(2014, 03, 1), date(2014, 10, 1)),
+    (date(2014, 10, 1), date(2015, 03, 1)),
 ]
+
 
 def connect(db=DB_NAME, user=DB_USER):
     """Connect to the specified Postgres database as the specified user."""
@@ -44,6 +45,60 @@ def add_nodes(cur, graph):
         if user_id < 0:
             continue
         graph.AddNode(user_id)
+
+
+def add_nodes_before(cur, graph, cutoff):
+    """Add users to graph as nodes."""
+    cur.execute("SELECT id FROM se_user WHERE creation_date < %s;", (cutoff,))
+    for row in results(cur):
+        user_id = row[0]
+
+        # Filter out dummy users with ID < 0.
+        if user_id < 0:
+            continue
+        graph.AddNode(user_id)
+
+
+def add_edges(cur, graph):
+    """Add a directed edge between each pair of nodes where the source
+       user answered a question asked by the destination user.
+    """
+
+    query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.parent_id = t2.id
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
+            """
+
+    cur.execute(query)
+    for src, dst in results(cur):
+        if src is None or dst is None:
+            continue
+        graph.AddEdge(src, dst)
+
+
+def add_edges_time_slice(cur, graph, start_date, end_date):
+    """Add a directed edge between each pair of nodes where the source
+       user answered a question asked by the destination user.
+    """
+
+    query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.parent_id = t2.id
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
+            """
+
+    cur.execute(query, {'start_date': start_date, 'end_date': end_date})
+    for src, dst in results(cur):
+        if src is None or dst is None:
+            continue
+        graph.AddEdge(src, dst)
 
 
 def add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights):

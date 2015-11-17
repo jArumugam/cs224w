@@ -35,6 +35,8 @@ def main():
 
     counts = Counter(reputation)
 
+    plt.xscale('log')
+    plt.yscale('log')
     # Logarithmic binning
     bins = np.logspace(1, np.log10(60000))
     plt.hist(reputation, bins, log=True)
