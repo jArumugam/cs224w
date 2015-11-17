@@ -3,11 +3,12 @@
 import psycopg2
 import snap
 import sys
+import matplotlib.pyplot as plt
 from datetime import date
 from collections import Counter
 
-DB_NAME = "stackexchangedb"
-DB_USER = "postgres"
+DB_NAME = "Ben-han"
+DB_USER = "Ben-han"
 
 TIME_BINS = [
     (date(2012, 3, 1), date(2012, 9, 1)),
@@ -34,6 +35,36 @@ def results(cursor):
             break
         yield result
 
+def compute_user_reputations(cur, conn):
+    """Computes time-based user reputation as the number of upvotes
+       gained from posts made before a certain time. Calculates a user's
+       cumulative reputation according to this metric for each time bin
+       above and saves it to the reputation table."""
+
+    reputation_query = """SELECT SUM(score) FROM Post
+                          WHERE owner_user_id = %(user_id)s
+                          AND creation_date > %(start_date)s
+                          AND creation_date < %(end_date)s;
+                       """
+    insertion_query = """INSERT INTO upvotes VALUES (%(user_id)s, %(r1)s, %(r2)s, %(r3)s, %(r4)s, %(r5)s, %(r6)s);
+                      """
+
+    cur.execute("SELECT id FROM se_user;")
+    user_ids = list(cur)
+    for user_id in user_ids:
+        # Skip dummy users.
+        if user_id < 0:
+            continue
+
+        # Calculate user rep per time bin.
+        rep = []
+        for bin in TIME_BINS:
+            cur.execute(reputation_query, {'user_id': user_id, 'start_date': bin[0], 'end_date': bin[1]})
+            rep.append(cur.fetchone())
+
+        # Insert into 'upvotes' table.
+        cur.execute(insertion_query, {'user_id': user_id, 'r1': rep[0], 'r2': rep[1], 'r3': rep[2], 'r4': rep[3], 'r5': rep[4], 'r6': rep[5]})
+        conn.commit()
 
 def add_nodes(cur, graph):
     """Add users to graph as nodes."""
@@ -87,11 +118,16 @@ def add_edges_time_slice(cur, graph, start_date, end_date):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.parent_id = t2.id
+               INNER JOIN se_user u1
+               ON t1.owner_user_id = u1.id
+               INNER JOIN se_user u2
+               ON t2.owner_user_id = u2.id
                WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
                AND t1.creation_date > %(start_date)s
                AND t1.creation_date < %(end_date)s
                AND t2.creation_date > %(start_date)s
-               AND t2.creation_Date < %(end_date)s;
+               AND t2.creation_Date < %(end_date)s
+               AND u1.reputation < u2.reputation;
             """
 
     cur.execute(query, {'start_date': start_date, 'end_date': end_date})
@@ -178,17 +214,37 @@ def build_graph_answer_question(cur, start_date, end_date, directed=True, weight
 
 
 def main(argv):
+    # Connect to DB.
     db_name = DB_NAME
     db_user = DB_USER
     if len(argv) > 3:
         db_name = argv[1]
         db_user = argv[2]
-
     conn, cur = connect(db_name, db_user)
-    graph = build_graph(cur)
-    
-    print "Nodes in graph:", graph.GetNodes()
-    print "Edges in graph:", graph.GetEdges()
+
+    # Identify nodes we're interested in.
+    cur.execute("SELECT u1.id FROM se_user u1 INNER JOIN upvotes u2 ON u1.id = u2.id WHERE u2.bin1 + u2.bin2 + u2.bin3 + u2.bin4 + u2.bin5 + u2.bin6 > 1600;")
+    user_ids = [user_id[0] for user_id in cur if user_id[0] != -1]
+    avg_out_degs = []
+
+    # Build a graph per time slice.
+    for bin in TIME_BINS:
+        graph = build_graph_time_slice(cur, bin[0], bin[1])
+        print "Nodes in graph:", graph.GetNodes()
+        print "Edges in graph:", graph.GetEdges()
+
+        # Record per-user outdegree at that time slice.
+        avg_out_deg = 0.0
+        for user_id in user_ids:
+            out_deg = graph.GetNI(user_id).GetOutDeg()
+            avg_out_deg = avg_out_deg + float(out_deg) / len(user_ids)
+        avg_out_degs.append(avg_out_deg)
+
+    # Plot average user out-degree at each time slice.
+    x = range(0, len(avg_out_degs))
+    plt.plot(x, avg_out_degs)
+    plt.savefig("test")
+    plt.show()
 
 
 if __name__ == '__main__':
