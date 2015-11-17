@@ -33,14 +33,14 @@ def main():
     conn, cur = connect()
     reputation = get_reputation(cur)
 
-    counts = Counter(reputation)
+    bin_width = 100
+    rounded_rep = [(i//bin_width)*bin_width for i in reputation]
+    counts = Counter(rounded_rep)
 
+    print counts
     plt.xscale('log')
     plt.yscale('log')
-    # Logarithmic binning
-    bins = np.logspace(1, np.log10(60000))
-    plt.hist(reputation, bins, log=True)
-
+    plt.scatter(map(lambda x: x+1, counts.keys()), counts.values())
     plt.show()
 
 
