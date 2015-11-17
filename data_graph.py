@@ -9,6 +9,14 @@ from collections import Counter
 DB_NAME = "stackexchangedb"
 DB_USER = "postgres"
 
+TIME_BINS = [
+    (date(2012, 1, 1), date(2012, 7, 1))
+    (date(2012, 7, 1), date(2013, 1, 1))
+    (date(2013, 1, 1), date(2013, 7, 1))
+    (date(2013, 7, 1), date(2014, 1, 1))
+    (date(2014, 1, 1), date(2014, 7, 1))
+    (date(2014, 7, 1), date(2015, 1, 1))
+]
 
 def connect(db=DB_NAME, user=DB_USER):
     """Connect to the specified Postgres database as the specified user."""
