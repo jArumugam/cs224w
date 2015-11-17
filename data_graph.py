@@ -38,7 +38,7 @@ def add_nodes(cur, graph):
         graph.AddNode(user_id)
 
 
-def add_edges_answer_question(cur, graph, directed, weighted, weights):
+def add_edges_answer_question(cur, graph, directed, weighted, weights, start_date, end_date):
     """Add a directed edge between each pair of nodes where the source
        user answered a question asked by the destination user.
     """
@@ -47,7 +47,11 @@ def add_edges_answer_question(cur, graph, directed, weighted, weights):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.parent_id = t2.id
-               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
             """
 
 
@@ -62,7 +66,11 @@ def add_edges_answer_question(cur, graph, directed, weighted, weights):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.parent_id = t2.id
-               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
             """
 
         cur.execute(query)
@@ -77,30 +85,6 @@ def add_edges_answer_question(cur, graph, directed, weighted, weights):
                     weights[(src, dst)] += 1
                 else:
                     weights[(dst, src)] += 1
-
-
-
-def add_edges_time_slice(cur, graph, start_date, end_date):
-    """Add a directed edge between each pair of nodes where the source
-       user answered a question asked by the destination user.
-    """
-
-    query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
-               FROM Post t1
-               INNER JOIN Post t2
-               ON t1.parent_id = t2.id
-               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1
-               AND t1.creation_date > %(start_date)s
-               AND t1.creation_date < %(end_date)s
-               AND t2.creation_date > %(start_date)s
-               AND t2.creation_Date < %(end_date)s;
-            """
-
-    cur.execute(query, {'start_date': start_date, 'end_date': end_date})
-    for src, dst in results(cur):
-        if src is None or dst is None:
-            continue
-        graph.AddEdge(src, dst)
 
 
 def get_top_user_ids(cur, percentile=.1):
@@ -120,13 +104,13 @@ def build_graph_time_slice(cur, start, end):
     return graph
 
 
-def build_graph_answer_question(cur, directed=True, weighted=False):
+def build_graph_answer_question(cur, directed=True, weighted=False, start_date, end_date):
     graph = snap.TNGraph.New()
     if not directed:
         graph = snap.TUNGraph.New()
     add_nodes(cur, graph)
     weights = Counter()
-    add_edges_answer_question(cur, graph, directed, weighted, weights)
+    add_edges_answer_question(cur, graph, directed, weighted, weights, start_date, end_date)
     return (graph, weights)
 
 
