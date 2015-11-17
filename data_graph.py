@@ -102,7 +102,7 @@ def add_edges_time_slice(cur, graph, start_date, end_date):
 
 
 def add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights):
-    """Add a directed edge between each pair of nodes where the source
+    """Add an edge between each pair of nodes where the source
        user answered a question asked by the destination user.
     """
     if not weighted:
@@ -150,6 +150,53 @@ def add_edges_answer_question(cur, graph, start_date, end_date, directed, weight
                     weights[(dst, src)] += 1
 
 
+def add_edges_accepted_answer(cur, graph, start_date, end_date, directed, weighted, weights):
+    """Add an edge between each pair of nodes where the source
+       user has an accepted answer to a question asked by the destination user.
+    """
+    if not weighted:
+        query = """SELECT DISTINCT t2.owner_user_id, t1.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.accepted_answer_id = t2.id
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
+            """
+
+
+        cur.execute(query, {'start_date': start_date, 'end_date': end_date})
+        for src, dst in results(cur):
+            if src is None or dst is None:
+                continue
+            graph.AddEdge(src, dst)
+
+    else:
+        query = """SELECT t2.owner_user_id, t1.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.accepted_answer_id = t2.id
+               AND t1.creation_date > %(start_date)s
+               AND t1.creation_date < %(end_date)s
+               AND t2.creation_date > %(start_date)s
+               AND t2.creation_Date < %(end_date)s;
+            """
+
+        cur.execute(query, {'start_date': start_date, 'end_date': end_date})
+        for src, dst in results(cur):
+            if src is None or dst is None:
+                continue
+            graph.AddEdge(src, dst)
+            if directed:
+                weights[(src, dst)] += 1
+            else:
+                if src < dest:
+                    weights[(src, dst)] += 1
+                else:
+                    weights[(dst, src)] += 1
+
+
 def get_top_user_ids(cur, percentile=.1):
     """Get the ids of the top users ranked by reputation."""
     cur.execute("SELECT count(*) FROM se_user;")
@@ -176,6 +223,15 @@ def build_graph_answer_question(cur, start_date, end_date, directed=True, weight
     add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights)
     return (graph, weights)
 
+
+def build_graph_accepted_answer(cur, start_date, end_date, directed=True, weighted=False):
+  graph = snap.TNGraph.New()
+  if not directed:
+      graph = snap.TUNGraph.New()
+  add_nodes(cur, graph)
+  weights = Counter()
+  add_edges_accepted_answer(cur, graph, start_date, end_date, directed, weighted, weights)
+  return (graph, weights)
 
 def main(argv):
     db_name = DB_NAME
