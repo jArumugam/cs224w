@@ -4,9 +4,10 @@ import psycopg2
 import snap
 import sys
 from datetime import date
+from collections import Counter
 
-DB_NAME = "kulshrax"
-DB_USER = "kulshrax"
+DB_NAME = "stackexchangedb"
+DB_USER = "postgres"
 
 
 def connect(db=DB_NAME, user=DB_USER):
@@ -37,23 +38,46 @@ def add_nodes(cur, graph):
         graph.AddNode(user_id)
 
 
-def add_edges(cur, graph):
+def add_edges_answer_question(cur, graph, directed, weighted, weights):
     """Add a directed edge between each pair of nodes where the source
        user answered a question asked by the destination user.
     """
-
-    query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+    if not weighted:
+        query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
                FROM Post t1
                INNER JOIN Post t2
                ON t1.parent_id = t2.id
                WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
             """
 
-    cur.execute(query)
-    for src, dst in results(cur):
-        if src is None or dst is None:
-            continue
-        graph.AddEdge(src, dst)
+
+        cur.execute(query)
+        for src, dst in results(cur):
+            if src is None or dst is None:
+                continue
+            graph.AddEdge(src, dst)
+
+    else:
+        query = """SELECT t1.owner_user_id, t2.owner_user_id
+               FROM Post t1
+               INNER JOIN Post t2
+               ON t1.parent_id = t2.id
+               WHERE t1.post_type_id = 2 AND t2.post_type_id = 1;
+            """
+
+        cur.execute(query)
+        for src, dst in results(cur):
+            if src is None or dst is None:
+                continue
+            graph.AddEdge(src, dst)
+            if directed:
+                weights[(src, dst)] += 1
+            else:
+                if src < dest:
+                    weights[(src, dst)] += 1
+                else:
+                    weights[(dst, src)] += 1
+
 
 
 def add_edges_time_slice(cur, graph, start_date, end_date):
@@ -96,11 +120,14 @@ def build_graph_time_slice(cur, start, end):
     return graph
 
 
-def build_graph(cur):
+def build_graph_answer_question(cur, directed=True, weighted=False):
     graph = snap.TNGraph.New()
+    if not directed:
+        graph = snap.TUNGraph.New()
     add_nodes(cur, graph)
-    add_edges(cur, graph)
-    return graph
+    weights = Counter()
+    add_edges_answer_question(cur, graph, directed, weighted, weights)
+    return (graph, weights)
 
 
 def main(argv):
