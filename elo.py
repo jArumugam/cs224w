@@ -5,22 +5,18 @@ import requests
 def get_elo_data(user_id):
     # Fetch web page from StackRating.
     response = requests.get('http://stackrating.com/user/{}'.format(user_id))
-    
-    # List to collect output.
-    data = []
+    lines = response.text.split('\n')
 
     # Extremely janky parser that parses the JS array as a Python list.
     parse = lambda line: tuple(eval(line.strip())[0])
 
-    # Parse each line the ranking array.
-    in_array = False
-    for i, line in enumerate(response.text.split('\n')):
-        if line.endswith('var rows = ['):
-            in_array = True
-            continue
-        if in_array:
-            if line.endswith('];'):
-                break
-            data.append(parse(line))
+    # Get line number bounds for array in sounce.
+    start, end = 0, 0
+    for i, line in enumerate(lines):
+        if not start and line.endswith('var rows = ['):
+            start = i + 1
+        if start and line.endswith('];'):
+            end = i 
+            break
 
-    return data
+    return [parse(line) for line in lines[start:end]]
