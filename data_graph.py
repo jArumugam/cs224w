@@ -98,7 +98,7 @@ def compute_elo_ratings(cur, conn):
         # Calculate ELO rep per time bin.
         rep = [foobarbaz(data, bin[0], bin[1]) for bin in TIME_BINS]
 
-        # Insert into 'upvotes' table.
+        # Insert into 'elo' table.
         cur.execute(insertion_query, {'user_id': user_id, 'r1': rep[0], 'r2': rep[1], 'r3': rep[2], 'r4': rep[3], 'r5': rep[4], 'r6': rep[5]})
         conn.commit()
 
