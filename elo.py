@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import requests
+from datetime import datetime
 
 def get_elo_data(user_id):
     # Fetch web page from StackRating.
@@ -19,4 +20,5 @@ def get_elo_data(user_id):
             end = i 
             break
 
-    return [parse(line) for line in lines[start:end]]
+    data = sorted(parse(line) for line in lines[start:end])
+    return [(datetime.fromtimestamp(i), j) for i,j in data]

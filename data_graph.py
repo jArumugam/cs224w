@@ -3,6 +3,7 @@
 import psycopg2
 import snap
 import sys
+import elo
 import matplotlib.pyplot as plt
 from datetime import date
 from collections import Counter
@@ -39,7 +40,7 @@ def compute_user_reputations(cur, conn):
     """Computes time-based user reputation as the number of upvotes
        gained from posts made before a certain time. Calculates a user's
        cumulative reputation according to this metric for each time bin
-       above and saves it to the reputation table."""
+       above and saves it to the |upvotes| table."""
 
     reputation_query = """SELECT SUM(score) FROM Post
                           WHERE owner_user_id = %(user_id)s
@@ -63,6 +64,41 @@ def compute_user_reputations(cur, conn):
             rep.append(cur.fetchone())
 
         # Insert into 'upvotes' table.
+        cur.execute(insertion_query, {'user_id': user_id, 'r1': rep[0], 'r2': rep[1], 'r3': rep[2], 'r4': rep[3], 'r5': rep[4], 'r6': rep[5]})
+        conn.commit()
+
+def foobarbaz(data, start_date, end_date):
+    """Extracts ELO data from within a start_date and
+       end_date and returns the latest date. Do not question
+       the name of this function."""
+    dates = [entry for entry in data if start_date < entry[0] <= end_date]
+    if len(dates) > 0:
+        return max(dates)
+    return 1500 # default ELO rating
+
+def compute_elo_ratings(cur, conn):
+    """Computes the user's elo rating for each time bin
+       above and saves it to the |elo| table. JK about computing...
+       we're just scraping it from a website. See 
+       http://stackrating.com/"""
+
+    insertion_query = """INSERT INTO elo VALUES (%(user_id)s, %(r1)s, %(r2)s, %(r3)s, %(r4)s, %(r5)s, %(r6)s);
+                      """
+
+    cur.execute("SELECT id FROM se_user;")
+    user_ids = list(cur)
+    for user_id in user_ids:
+        # Skip dummy users.
+        if user_id < 0:
+            continue
+
+        # Fetch user elo ratings
+        data = elo.get_elo_data(user_id)
+
+        # Calculate ELO rep per time bin.
+        rep = [foobarbaz(data, bin[0], bin[1]) for bin in TIME_BINS]
+
+        # Insert into 'elo' table.
         cur.execute(insertion_query, {'user_id': user_id, 'r1': rep[0], 'r2': rep[1], 'r3': rep[2], 'r4': rep[3], 'r5': rep[4], 'r6': rep[5]})
         conn.commit()
 
@@ -296,7 +332,6 @@ def add_edges_answer_question_below_threshold(cur, graph, start_date, end_date, 
                AND t2.creation_Date < %(end_date)s;
             """
 
-
         cur.execute(query, {'start_date': start_date, 'end_date': end_date, 'threshold': threshold})
         for src, dst in results(cur):
             if src is None or dst is None:
@@ -352,7 +387,6 @@ def build_graph_answer_question(cur, start_date, end_date, directed=True, weight
     weights = Counter()
     add_edges_answer_question(cur, graph, start_date, end_date, directed, weighted, weights)
     return (graph, weights)
-
 
 def build_graph_accepted_answer(cur, start_date, end_date, directed=True, weighted=False):
   graph = snap.TNGraph.New()
