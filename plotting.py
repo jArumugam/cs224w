@@ -41,13 +41,13 @@ def plot_distributions():
 	plt.xscale('log')
 	plt.yscale('log')
 	plt.scatter(map(lambda x: x+1, questions.keys()), questions.values())
-	plt.savefig("questions_distribution.png")
+	plt.savefig("output/questions_distribution.png")
 
 	answers = Counter({0: 20315, 1: 1271, 2: 248, 3: 98, 4: 59, 5: 35, 6: 30, 7: 26, 8: 18, 9: 14, 10: 14, 11: 10, 15: 9, 12: 8, 13: 8, 14: 7, 17: 7, 18: 6, 16: 4, 32: 4, 22: 3, 31: 3, 34: 3, 30: 2, 19: 2, 23: 2, 24: 2, 158: 2, 37: 2, 45: 2, 48: 2, 50: 2, 28: 2, 123: 2, 21: 2, 174: 1, 25: 1, 27: 1, 156: 1, 157: 1, 33: 1, 163: 1, 168: 1, 41: 1, 42: 1, 43: 1, 44: 1, 46: 1, 47: 1, 179: 1, 53: 1, 57: 1, 63: 1, 193: 1, 66: 1, 67: 1, 246: 1, 74: 1, 79: 1, 336: 1, 81: 1, 141: 1, 88: 1, 90: 1, 255: 1, 224: 1, 225: 1, 29: 1, 495: 1, 40: 1, 627: 1, 69: 1, 1666: 1, 127: 1})
 	plt.xscale('log')
 	plt.yscale('log')
 	plt.scatter(map(lambda x: x+1, answers.keys()), answers.values())
-	plt.savefig("answers_distribution.png")
+	plt.savefig("output/answers_distribution.png")
 
 def main(args):
 	# Plot elo graph for top 8 users by post count.
@@ -56,6 +56,7 @@ def main(args):
 	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
 	for i in range(0, len(user_ids)):
 		plot_elo(cur, conn, user_ids[i], colors[i])
+	plt.savefig("output/elo.png")
 	plt.show()
 
 if __name__ == '__main__':
