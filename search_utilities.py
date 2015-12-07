@@ -187,15 +187,6 @@ def cau(cursor, user_id, timebin = None):
         cursor.execute(query, {'user_id': post_id, 'start': timebin.start, 'end': timebin.end})
     return cursor.fetchone()
 
-def get_top_user_ids_by_percentile(cursor, percentile=.1):
-    """Get the ids of the top users ranked by reputation."""
-    cursor.execute("SELECT count(*) FROM se_user;")
-    count = cursor.fetchone()[0]
-    limit = int(count * percentile)
-    query = "SELECT id FROM se_user ORDER BY reputation DESC LIMIT %s"
-    cursor.execute(query, (limit,))
-    return [i[0] for i in cursor]
-
 def get_top_users_by_percentile(cursor, percentile=.1):
     """Get the usernames and reputations of the top users ranked by reputation by percentile."""
     cursor.execute("SELECT count(*) FROM se_user;")
