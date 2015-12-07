@@ -221,7 +221,6 @@ def add_edges_answer_question(cur, graph, start_date, end_date, directed, weight
                 else:
                     weights[(dst, src)] += 1
 
-
 def add_edges_accepted_answer(cur, graph, start_date, end_date, directed, weighted, weights):
     """Add an edge between each pair of nodes where the source
        user has an accepted answer to a question asked by the destination user.
@@ -268,7 +267,6 @@ def add_edges_accepted_answer(cur, graph, start_date, end_date, directed, weight
                 else:
                     weights[(dst, src)] += 1
 
-
 def add_edges_answer_question_above_threshold(cur, graph, start_date, end_date, threshold, directed, weighted, weights):
     """Add an edge between each pair of nodes where the source
        user answered a question asked by the destination user 
@@ -284,8 +282,6 @@ def add_edges_answer_question_above_threshold(cur, graph, start_date, end_date, 
                AND t2.creation_date > %(start_date)s
                AND t2.creation_Date < %(end_date)s;
             """
-
-
         cur.execute(query, {'start_date': start_date, 'end_date': end_date, 'threshold': threshold})
         for src, dst in results(cur):
             if src is None or dst is None:

@@ -2,12 +2,41 @@
 
 from __future__ import division
 from collections import Counter
+from data_graph import *
 import psycopg2
 import matplotlib.pyplot as plt
 import numpy as np	
 
+import elo
+import time
 
-def main():
+def plot_elo(cur, conn, user_id, color):
+	# Fetch elo data for the given user.
+	history = elo.elo_history(cur, conn, user_id)
+	x = []
+	y = []
+
+	# Calculate moving average of elo data if possible.
+	window_size = 8
+	if len(history) > window_size:
+		for i in range(0, len(history) - window_size):
+			y_avg = 0
+			x_avg = 0
+			for j in range(0, window_size):
+				entry = history[i + j]
+				y_avg += entry[0] / float(window_size)
+				x_avg += time.mktime(entry[1].timetuple()) / float(window_size)
+			x.append(x_avg)
+			y.append(y_avg)
+	else:
+		for entry in history:
+			x.append(time.mktime(entry[1].timetuple()))
+			y.append(entry[0])
+
+	# Plot.
+	plt.scatter(x, y, color=color)
+
+def plot_distributions():
 	questions = Counter({0: 17663, 1: 3215, 2: 703, 3: 241, 4: 132, 5: 83, 6: 44, 7: 40, 8: 26, 9: 18, 10: 17, 11: 14, 12: 8, 13: 6, 16: 6, 18: 5, 22: 5, 15: 4, 19: 4, 14: 3, 20: 3, 29: 3, 17: 2, 23: 2, 24: 2, 26: 2, 31: 2, 21: 1, 25: 1, 27: 1, 30: 1, 34: 1, 40: 1, 41: 1, 46: 1, 50: 1, 79: 1})
 	plt.xscale('log')
 	plt.yscale('log')
@@ -19,3 +48,15 @@ def main():
 	plt.yscale('log')
 	plt.scatter(map(lambda x: x+1, answers.keys()), answers.values())
 	plt.savefig("answers_distribution.png")
+
+def main(args):
+	# Plot elo graph for top 8 users by post count.
+	conn, cur = connect("Ben-han", "Ben-han")
+	user_ids = [683, 98, 755, 9550, 39, 699, 8321, 4287]
+	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
+	for i in range(0, len(user_ids)):
+		plot_elo(cur, conn, user_ids[i], colors[i])
+	plt.show()
+
+if __name__ == '__main__':
+    main(sys.argv)
