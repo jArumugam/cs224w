@@ -3,7 +3,7 @@
 import search_utilities
 import snap
 
-def qa_graph(conn, cur, directed = True, timebin = None):
+def qa_graph(cursor, directed = True, timebin = None):
     """
     Returns a SNAP graph of users where user A is
     connected to user B if user B answered a question
@@ -20,7 +20,7 @@ def qa_graph(conn, cur, directed = True, timebin = None):
         graph = snap.TUNGraph.New()
 
     # Add nodes
-    users = search_utilities.users_above_threshold(cur, 0)
+    users = search_utilities.users_above_threshold(cursor, 0)
     for user_id in users:
         # Filter out dummy users with ID < 0.
         if user_id < 0:

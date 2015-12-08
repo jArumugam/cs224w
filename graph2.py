@@ -98,6 +98,32 @@ def build_graph_before(cur, cutoff):
     return graph
 
 
+def hits(graph):
+    hubs = snap.TIntFltH()
+    auths = snap.TIntFltH()
+    snap.GetHits(graph, hubs, auths)
+    return dict((k, (hubs[k], auths[k])) for k in hubs)
+
+
+def pagerank(graph):
+    ranks = snap.TIntFltH()
+    snap.GetPageRank(graph, ranks)
+    return dict((k, ranks[k]) for k in ranks)
+
+
+def top_n_pr(pr_ranks, n):
+    return list(sorted(ranks.items(), reverse=True, key = lambda x: x[1]))[:n]
+
+
+def top_n_auths(hits_ranks, n):
+    return list(sorted(hits_ranks.items(),
+            reverse=True, key = lambda x: x[1][1]))[:n]
+
+def top_n_hubs(hits_ranks, n):
+    return list(sorted(hitsranks.items(),
+            reverse=True, key = lambda x: x[1][0]))[:n]
+
+
 def main(argv):
     db_name = DB_NAME
     db_user = DB_USER
