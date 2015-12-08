@@ -24,9 +24,9 @@ def plot_pca(samples, labels):
     plt.show()
 
 
-def logistic_test(train_data, train_labels, test_data, test_labels):
+def logistic_test(train_data, train_labels, test_data, test_labels, cv=False):
     # Perform logistic regression.
-    clf = LogisticRegression()
+    clf = LogisticRegressionCV if cv else LogisticRegression()
     clf.fit(train_data, train_labels)
     predicted_labels = clf.predict(test_data)
 
