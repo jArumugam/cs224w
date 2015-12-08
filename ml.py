@@ -32,7 +32,7 @@ def logistic_test(train_data, train_labels, test_data, test_labels):
 
     # Count true positives, true negatives, false positives, false negatives.
     tp, tn, fp, fn = 0, 0, 0, 0
-    for predicted, actual in zip(predicted_labels, test_data):
+    for predicted, actual in zip(predicted_labels, test_labels):
         if predicted == 1 and actual == 1:
             tp += 1
         if predicted == 0 and actual == 0:
