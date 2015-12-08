@@ -12,7 +12,7 @@ import cau
 DB_NAME = "stackexchangedb"
 DB_USER = "postgres"
 
-percentiles = [i*0.1 for i in range(0, 11)]
+percentiles = [i*0.01 for i in range(0, 101)]
 
 def connect(db=DB_NAME, user=DB_USER):
     """Connect to the specified Postgres database as the specified user."""

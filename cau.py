@@ -189,9 +189,14 @@ def _users_with_creation_date(cursor):
 
     :param cursor: a Postgres database cursor
     """
-    query = """SELECT id, creation_date
-               FROM se_user;
-            """
+    query = """SELECT bar.id, MIN(start) as start2 FROM (
+                   SELECT DISTINCT u.id as id, LEAST(u.creation_date, p.creation_date) as start 
+                   FROM se_user u 
+                   LEFT OUTER JOIN Post p 
+                   ON p.owner_user_id = u.id
+               ) AS bar
+               GROUP BY bar.id
+               ORDER BY start2;"""
     cursor.execute(query)
     return (result for result in cursor)
 

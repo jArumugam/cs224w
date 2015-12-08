@@ -123,12 +123,18 @@ def _create_elo_table(cursor, connection, end_date = None):
             # between +0 and +0.5 for P2.
             p1_score += 0.00001
             p1_update = 1 - p1_expected_result
-            p2_update = max((p2_score - 0.5 * p1_score) / (p1_score * 0.5), 0) * 0.5 - p2_expected_result
+            if p2_score > p1_score * 0.1 and p1_score > 0:
+                p2_update = max((p2_score - 0.5 * p1_score) / (p1_score * 0.5), 0) * 0.5 - p2_expected_result
+            else:
+                p2_update = 1 - p2_expected_result
         else:
             # P2 wins. Score is +1 for P2 and an interpolated value
             # between +0 and +0.5 for P1.
             p2_score += 0.00001
-            p1_update = max((p1_score - 0.5 * p2_score) / (p2_score * 0.5), 0) * 0.5 - p1_expected_result
+            if p1_score > p2_score * 0.5 and p2_score > 0:
+                p1_update = max((p1_score - 0.5 * p2_score) / (p2_score * 0.5), 0) * 0.5 - p1_expected_result
+            else:
+                p1_update = 0 - p1_expected_result
             p2_update = 1 - p2_expected_result
         p1_elo += normalizer * K1 * p1_update 
         p2_elo += normalizer * K2 * p2_update
@@ -219,9 +225,11 @@ def _users_with_creation_date(cursor):
 
     :param cursor: a Postgres database cursor
     """
-    query = """SELECT id, creation_date
-               FROM se_user;
-            """
+    query = """SELECT DISTINCT u.id, LEAST(u.creation_date, p.creation_date) AS start 
+               FROM se_user u 
+               LEFT OUTER JOIN Post p 
+               ON p.owner_user_id = u.id 
+               ORDER BY start;"""
     cursor.execute(query)
     return (result for result in cursor)
 
