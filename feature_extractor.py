@@ -39,6 +39,7 @@ the top 10 percentile of users by StackExchange reputation.
 import sys
 import metrics
 import search_utilities
+import ml
 
 feature_percentiles = [.1, .2, .3, .4, .5]
 
@@ -92,8 +93,8 @@ def training_examples(cur, conn, user_ids):
 def main(args):
     conn, cur = metrics.connect("Ben-han", "Ben-han")
     user_ids = search_utilities.get_experts()
-    print user_ids
-    print training_examples(cur, conn, user_ids)
+    data, labels = training_examples(cur, conn, user_ids)
+    ml.logistic_test(data, labels, data, labels)
 
 if __name__ == '__main__':
     main(sys.argv)
