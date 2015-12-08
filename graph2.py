@@ -102,6 +102,13 @@ def build_graph_before(cur, cutoff):
     add_edges_before(cur, graph, cutoff)
     return graph
 
+def build_graph_before_undirected(cur, cutoff):
+    if type(cutoff) == 'str':
+        cutoff = parse(cutoff)
+    graph = snap.TUNGraph.New()
+    add_nodes(cur, graph)
+    add_edges_before(cur, graph, cutoff)
+    return graph
 
 def hits(graph):
     hubs = snap.TIntFltH()
@@ -119,6 +126,15 @@ def indegree(graph):
     indegrees = snap.TIntPrV()
     snap.GetNodeInDegV(graph, indegrees)
     return dict((indegrees[i].GetVal1(), indegrees[i].GetVal2()) for i in range(indegrees.Len()))
+
+def betweenness(graph):
+    betweenness = snap.TIntFltH()
+    unused = snap.TIntPrFltH()
+    snap.GetBetweennessCentr(graph, betweenness, unused, 1.0)
+    return dict((k, betweenness[k]) for k in betweenness)
+
+def closeness(graph, userID):
+    return snap.GetClosenessCentr(graph, userID)
 
 def top_n_pr(pr_ranks, n):
     return list(sorted(pr_ranks.items(), reverse=True,

@@ -76,6 +76,15 @@ def get_indegree_at_time(cur, userID, time):
     indegrees = graph2.indegree(graph)
     return indegrees[userID]
 
+def get_betweenness_at_time(cur, userID, time):
+    graph = graph2.build_graph_before_undirected(cur, time)
+    betweenness = graph2.betweenness(graph)
+    return betweenness[userID]
+
+def get_closeness_at_time(cur, userID, time):
+    graph = graph2.build_graph_before_undirected(cur, time)
+    return graph2.closeness(graph, userID)
+
 def get_pagerank_at_time(cur, userID, time):
     graph = graph2.build_graph_before(cur, time)
     ranks = graph2.pagerank(graph)
@@ -98,4 +107,10 @@ def indegree_for_user(cur, userID):
     times = percentile_normalization(userID, cur)
     return [get_indegree_at_time(cur, userID, t) for t in times]
 
+def betweenness_for_user(cur, userID):
+    times = percentile_normalization(userID, cur)
+    return [get_betweenness_at_time(cur, userID, t) for t in times]
 
+def closeness_for_user(cur, userID):
+    times = percentile_normalization(userID, cur)
+    return [get_closeness_at_time(cur, userID, t) for t in times]
