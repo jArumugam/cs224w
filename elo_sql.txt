@@ -1,0 +1,102 @@
+CREATE TABLE IF NOT EXISTS games (
+    id bigserial PRIMARY KEY,
+    q_id bigint DEFAULT -1,
+    p1_id bigint DEFAULT -1,
+    p1_score bigint DEFAULT -1,
+    p1_date timestamp DEFAULT NULL,
+    p2_id bigint DEFAULT -1,
+    p2_score bigint DEFAULT -1,
+    p2_date timestamp DEFAULT NULL
+);
+
+CREATE FUNCTION play_game() RETURNS TRIGGER AS $play_game$
+    DECLARE
+        p1_old_elo              double precision;
+        p2_old_elo              double precision;
+        p1_expected_result  double precision;
+        p2_expected_result  double precision;
+        p1_games_played     double precision;
+        p2_games_played     double precision;
+        threshold               double precision;
+        K1                      double precision;
+        K2                      double precision;
+        reply_count         double precision;
+        normalizer              double precision;
+        p1_update               double precision;
+        p2_update               double precision;
+        tournament_date     timestamp;
+    BEGIN
+        --
+        -- Perform ELO calculation and insert results into elo table.
+        --
+        SELECT COUNT(*) INTO reply_count FROM Post WHERE parent_id = NEW.q_id;
+        normalizer = 1.0 / (reply_count - 1.0);
+        tournament_date = GREATEST(NEW.p1_date, NEW.p2_date);
+        
+        SELECT rating INTO p1_old_elo FROM elo WHERE user_id = NEW.p1_id ORDER BY time DESC LIMIT 1;
+        SELECT rating INTO p2_old_elo FROM elo WHERE user_id = NEW.p2_id ORDER BY time DESC LIMIT 1;
+        
+        p1_expected_result = 1.0 / (POWER(10, -(p1_old_elo - p2_old_elo) / 400.0) + 1);
+        p2_expected_result = 1.0 / (POWER(10, -(p2_old_elo - p1_old_elo) / 400.0) + 1);
+
+        SELECT Count(*) INTO p1_games_played FROM Post WHERE owner_user_id = NEW.p1_id AND creation_date < tournament_date AND post_type_id = 2;
+        SELECT Count(*) INTO p2_games_played FROM Post WHERE owner_user_id = NEW.p2_id AND creation_date < tournament_date AND post_type_id = 2;
+
+        threshold = 100.0;
+        K1 = 4;
+        IF (p1_games_played < threshold) THEN
+            K1 = 8;
+        ELSIF (p2_games_played < threshold) THEN
+            K1 = 1;
+        END IF;
+        
+        K2 = 4;
+        IF (p2_games_played < threshold) THEN
+            K2 = 8;
+        ELSIF (p1_games_played < threshold) THEN
+            K2 = 1;
+        END IF;
+
+        IF (NEW.p1_score = NEW.p2_score) THEN
+            p1_update = 0.5 - p1_expected_result;
+            p2_update = 0.5 - p2_expected_result;
+        ELSIF (NEW.p1_score > NEW.p2_score) THEN
+            p1_update = 1.0 - p1_expected_result;
+            p2_update = GREATEST((NEW.p2_score - 0.5 * NEW.p1_score) / (0.5 * (NEW.p1_score + 0.00001)), 0.0) * 0.5 - p2_expected_result;
+        ELSIF (NEW.p2_score > NEW.p1_score) THEN
+            p2_update = 1.0 - p2_expected_result;
+            p1_update = GREATEST((NEW.p1_score - 0.5 * NEW.p2_score) / (0.5 * (NEW.p2_score + 0.00001)), 0.0) * 0.5 - p1_expected_result;
+        END IF;
+        
+        p1_update = p1_old_elo + normalizer * K1 * p1_update;
+        p2_update = p2_old_elo + normalizer * K2 * p2_update;
+        
+        INSERT INTO elo (user_id, rating, time) VALUES(NEW.p1_id, p1_update, tournament_date);
+        INSERT INTO elo (user_id, rating, time) VALUES(NEW.p2_id, p2_update, tournament_date);
+        
+        RETURN NEW;
+    END
+$play_game$ LANGUAGE plpgsql;
+
+CREATE TRIGGER play_game
+AFTER INSERT ON games
+FOR EACH ROW 
+    EXECUTE PROCEDURE play_game();
+
+INSERT into games (q_id, p1_id, p1_score, p1_date, p2_id, p2_score, p2_date) (
+    SELECT q.id,
+            u1.id, a1.score, a1.creation_date, 
+            u2.id, a2.score, a2.creation_date
+    FROM Post q
+    INNER JOIN Post a1
+    ON q.id = a1.parent_id
+    INNER JOIN Post a2
+    ON q.id = a2.parent_id
+    INNER JOIN se_user u1
+    ON u1.id = a1.owner_user_id
+    INNER JOIN se_user u2
+    ON u2.id = a2.owner_user_id
+    WHERE a1.id < a2.id
+    AND u1.id <> u2.id
+    ORDER BY GREATEST(a1.creation_date, a2.creation_date)
+);
