@@ -28,10 +28,11 @@ def qa_graph(conn, cur, directed = True, timebin = None):
         graph.AddNode(user_id)
 
     # Build edges
-    pairs = search_utilities.asker_answerer_pairs(cursor, timebin)
+    pairs = search_utilities.asker_answerer_pairs(cur, timebin)
     for (asker, answerer) in pairs:
         if not asker or not answerer:
-            graph.AddEdge(asker, answerer)
+            continue
+        graph.AddEdge(asker, answerer)
 
     return graph
 
