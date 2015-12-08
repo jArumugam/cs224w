@@ -30,6 +30,8 @@ def qa_graph(cursor, directed = True, timebin = None):
     # Build edges
     pairs = search_utilities.asker_answerer_pairs(cursor, timebin)
     for (asker, answerer) in pairs:
+        if asker is None or answerer is None:
+            continue
         graph.AddEdge(asker, answerer)
 
     return graph

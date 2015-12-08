@@ -170,7 +170,7 @@ def asker_answerer_pairs(cursor, timebin = None):
         query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
                    FROM Post t1
                    INNER JOIN Post t2
-                   ON t1.parent_id = t2.id
+                   ON t2.parent_id = t1.id
                    WHERE t1.post_type_id = 1 AND t2.post_type_id = 2;
                 """
         cursor.execute(query)
@@ -178,7 +178,7 @@ def asker_answerer_pairs(cursor, timebin = None):
         query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
                    FROM Post t1
                    INNER JOIN Post t2
-                   ON t1.parent_id = t2.id
+                   ON t2.parent_id = t1.id
                    WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
                    AND t1.creation_date > %(start)s
                    AND t1.creation_date < %(end)s
