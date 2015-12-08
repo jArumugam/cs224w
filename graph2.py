@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+"""
+Contains a bunch of functions taken from an old version of data_graph.py,
+along with helpers for getting HITS and PageRank scores from a graph.
+"""
+
 import psycopg2
 import snap
 import sys
@@ -70,7 +75,7 @@ def add_edges_before(cur, graph, cutoff):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.id = t2.parent_id
-               WHERE t1.post_type_id = 1 AND t2.post_type_id = 2;
+               WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
                AND t1.creation_date < %(cutoff)s
                AND t2.creation_date < %(cutoff)s;
             """
@@ -93,24 +98,40 @@ def build_graph_before(cur, cutoff):
     if type(cutoff) == 'str':
         cutoff = parse(cutoff)
     graph = snap.TNGraph.New()
-    add_nodes_before(cur, graph, cutoff)
+    add_nodes(cur, graph)
     add_edges_before(cur, graph, cutoff)
     return graph
 
 
-def main(argv):
-    db_name = DB_NAME
-    db_user = DB_USER
-    if len(argv) > 3:
-        db_name = argv[1]
-        db_user = argv[2]
+def hits(graph):
+    hubs = snap.TIntFltH()
+    auths = snap.TIntFltH()
+    snap.GetHits(graph, hubs, auths)
+    return dict((k, (hubs[k], auths[k])) for k in hubs)
 
-    conn, cur = connect(db_name, db_user)
+
+def pagerank(graph):
+    ranks = snap.TIntFltH()
+    snap.GetPageRank(graph, ranks)
+    return dict((k, ranks[k]) for k in ranks)
+
+
+def top_n_pr(pr_ranks, n):
+    return list(sorted(pr_ranks.items(), reverse=True,
+            key = lambda x: x[1]))[:n]
+
+
+def top_n_auths(hits_ranks, n):
+    return list(sorted(hits_ranks.items(), reverse=True,
+            key = lambda x: x[1][1]))[:n]
+
+
+def top_n_hubs(hits_ranks, n):
+    return list(sorted(hits_ranks.items(),
+            reverse=True, key = lambda x: x[1][0]))[:n]
+
+def get_metrics():
+    conn, cur = connect()
     graph = build_graph(cur)
-    
-    print "Nodes in graph:", graph.GetNodes()
-    print "Edges in graph:", graph.GetEdges()
+    return graph, pagerank(graph), hits(graph)
 
-
-if __name__ == '__main__':
-    main(sys.argv)
