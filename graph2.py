@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+"""
+Contains a bunch of functions taken from an old version of data_graph.py,
+along with helpers for getting HITS and PageRank scores from a graph.
+"""
+
 import psycopg2
 import snap
 import sys
@@ -130,19 +135,3 @@ def get_metrics():
     graph = build_graph(cur)
     return graph, pagerank(graph), hits(graph)
 
-def main(argv):
-    db_name = DB_NAME
-    db_user = DB_USER
-    if len(argv) > 3:
-        db_name = argv[1]
-        db_user = argv[2]
-
-    conn, cur = connect(db_name, db_user)
-    graph = build_graph(cur)
-    
-    print "Nodes in graph:", graph.GetNodes()
-    print "Edges in graph:", graph.GetEdges()
-
-
-if __name__ == '__main__':
-    main(sys.argv)

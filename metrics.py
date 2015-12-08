@@ -5,6 +5,7 @@ from collections import Counter
 import psycopg2
 import matplotlib.pyplot as plt
 import numpy as np
+import graph2
 
 DB_NAME = "stackexchangedb"
 DB_USER = "postgres"
@@ -56,3 +57,23 @@ def total_answers(userID, cur):
     for time in times:
         result.append(total_answers_helper(cur, start_time, time, userID))
     return result
+
+def get_pagerank_at_time(cur, userID, time):
+    graph = graph2.build_graph_before(cur, time)
+    ranks = graph2.pagerank(graph)
+    return ranks[userID]
+
+def get_auth_at_time(cur, userID, time):
+    graph = graph2.build_graph_before(cur, time)
+    ranks = graph2.hits(graph)
+    return ranks[userID][1]
+
+def pagerank_for_user(cur, userID):
+    times = percentile_normalization(userID, cur)
+    return [get_pagerank_at_time(cur, userID, t) for t in times]
+
+def auth_for_user(cur, userID):
+    times = percentile_normalization(userID, cur)
+    return [get_auth_at_time(cur, userID, t) for t in times]
+
+
