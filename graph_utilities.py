@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import search_utilities
 import snap
 

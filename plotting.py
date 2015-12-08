@@ -52,7 +52,7 @@ def plot_distributions():
 def main(args):
 	# Plot elo graph for top 8 users by post count.
 	conn, cur = connect("Ben-han", "Ben-han")
-	user_ids = [683, 98, 755, 9550, 39, 699, 8321, 4287]
+	user_ids = [2131] #[683, 98, 755, 9550, 39, 699, 8321, 4287]
 	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
 	for i in range(0, len(user_ids)):
 		plot_elo(cur, conn, user_ids[i], colors[i])

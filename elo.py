@@ -14,10 +14,10 @@ def elo(cursor, conn, user_id, end_date = None):
     :param timebin: end_date for ELO calculation.
     """
     if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn)
+        _create_elo_table(cursor, conn, end_date)
     return _elo(cursor, user_id, end_date)
 
-def elo_history(cursor, conn, user_id):
+def elo_history(cursor, conn, user_id, end_date = None):
     """
     Returns a generator for the full ELO history for a given 
     user, across the time span of the dataset.
@@ -26,7 +26,7 @@ def elo_history(cursor, conn, user_id):
     :param user_id: ID of user you want the ELO score for
     """
     if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn)
+        _create_elo_table(cursor, conn, end_date)
     return _elo_history(cursor, user_id)
 
 ####################################################
@@ -53,7 +53,7 @@ def _elo_table_exists(cursor):
     cursor.execute(statement)
     return cursor.fetchone()[0]
 
-def _create_elo_table(cursor, connection):
+def _create_elo_table(cursor, connection, end_date = None):
     """
     Creates the elo table and computes elo information
     for all users over the complete time range of the
@@ -76,7 +76,7 @@ def _create_elo_table(cursor, connection):
     connection.commit()
 
     # Loop through all played games in playing order.
-    for tournament in _users_by_tournament(cursor):
+    for tournament in _users_by_tournament(cursor, end_date):
         # Unpack tournament details.
         p1_id = tournament.p1.id
         p1_score = tournament.p1.score
@@ -225,7 +225,7 @@ def _users_with_creation_date(cursor):
     cursor.execute(query)
     return (result for result in cursor)
 
-def _users_by_tournament(cursor):
+def _users_by_tournament(cursor, end_date = None):
     """
     Returns a generator for 
     ((user_id, score), (user_id, score)) 
@@ -242,23 +242,44 @@ def _users_by_tournament(cursor):
     :param cursor: a Postgres database cursor
     :param timebin: a timebin to filter tournaments
     """
-    query = """SELECT u1.id, a1.score, a1.creation_date, 
+    if end_date is None:
+        query = """SELECT u1.id, a1.score, a1.creation_date, 
                       u2.id, a2.score, a2.creation_date, 
                       q.id
-               FROM Post q
-               INNER JOIN Post a1
-               ON q.id = a1.parent_id
-               INNER JOIN Post a2
-               ON q.id = a2.parent_id
-               INNER JOIN se_user u1
-               ON u1.id = a1.owner_user_id
-               INNER JOIN se_user u2
-               ON u2.id = a2.owner_user_id
-               WHERE a1.id < a2.id
-               AND u1.id <> u2.id
-               ORDER BY GREATEST(a1.creation_date, a2.creation_date);
-            """
-    cursor.execute(query)
+                   FROM Post q
+                   INNER JOIN Post a1
+                   ON q.id = a1.parent_id
+                   INNER JOIN Post a2
+                   ON q.id = a2.parent_id
+                   INNER JOIN se_user u1
+                   ON u1.id = a1.owner_user_id
+                   INNER JOIN se_user u2
+                   ON u2.id = a2.owner_user_id
+                   WHERE a1.id < a2.id
+                   AND u1.id <> u2.id
+                   ORDER BY GREATEST(a1.creation_date, a2.creation_date);
+                """
+        cursor.execute(query)
+    else:
+        query = """SELECT u1.id, a1.score, a1.creation_date, 
+                      u2.id, a2.score, a2.creation_date, 
+                      q.id
+                   FROM Post q
+                   INNER JOIN Post a1
+                   ON q.id = a1.parent_id
+                   INNER JOIN Post a2
+                   ON q.id = a2.parent_id
+                   INNER JOIN se_user u1
+                   ON u1.id = a1.owner_user_id
+                   INNER JOIN se_user u2
+                   ON u2.id = a2.owner_user_id
+                   WHERE a1.id < a2.id
+                   AND u1.id <> u2.id
+                   AND a1.creation_date < %(date)s
+                   AND a2.creation_date < %(date)s
+                   ORDER BY GREATEST(a1.creation_date, a2.creation_date);
+                """
+        cursor.execute(query, {"date": end_date})
     return (Tournament(Result(result[0], result[1], result[2]), 
                        Result(result[3], result[4], result[5]), 
                        result[6]) for result in cursor)
