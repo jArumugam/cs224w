@@ -37,7 +37,7 @@ def add_nodes(cur, graph):
 
 def add_nodes_before(cur, graph, cutoff=None):
     """Add users to graph as nodes."""
-    cur.execute("SELECT id FROM se_user WHERE creation_date < %s;", (cutoff,))
+    cur.execute("SELECT id FROM se_user WHERE creation_date <= %s;", (cutoff,))
     for row in cur:
         user_id = row[0]
 
@@ -76,8 +76,8 @@ def add_edges_before(cur, graph, cutoff):
                INNER JOIN Post t2
                ON t1.id = t2.parent_id
                WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
-               AND t1.creation_date < %(cutoff)s
-               AND t2.creation_date < %(cutoff)s;
+               AND t1.creation_date <= %(cutoff)s
+               AND t2.creation_date <= %(cutoff)s;
             """
 
     cur.execute(query, {'cutoff': cutoff})
@@ -102,6 +102,13 @@ def build_graph_before(cur, cutoff):
     add_edges_before(cur, graph, cutoff)
     return graph
 
+def build_graph_before_undirected(cur, cutoff):
+    if type(cutoff) == 'str':
+        cutoff = parse(cutoff)
+    graph = snap.TUNGraph.New()
+    add_nodes(cur, graph)
+    add_edges_before(cur, graph, cutoff)
+    return graph
 
 def hits(graph):
     hubs = snap.TIntFltH()
@@ -115,6 +122,19 @@ def pagerank(graph):
     snap.GetPageRank(graph, ranks)
     return dict((k, ranks[k]) for k in ranks)
 
+def indegree(graph):
+    indegrees = snap.TIntPrV()
+    snap.GetNodeInDegV(graph, indegrees)
+    return dict((indegrees[i].GetVal1(), indegrees[i].GetVal2()) for i in range(indegrees.Len()))
+
+def betweenness(graph):
+    betweenness = snap.TIntFltH()
+    unused = snap.TIntPrFltH()
+    snap.GetBetweennessCentr(graph, betweenness, unused, 1.0)
+    return dict((k, betweenness[k]) for k in betweenness)
+
+def closeness(graph, userID):
+    return snap.GetClosenessCentr(graph, userID)
 
 def top_n_pr(pr_ranks, n):
     return list(sorted(pr_ranks.items(), reverse=True,
