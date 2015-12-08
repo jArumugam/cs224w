@@ -159,6 +159,35 @@ def users_in_post(cursor, post_id, timebin = None):
     		cursor.execute(query, {'post_id': post_id, 'start': timebin.start, 'end': timebin.end})
   	return (result[0] for result in cursor)
 
+def asker_answerer_pairs(cursor, timebin = None):
+    """
+    Returns a generator for (asker, answerer) pairs
+    where answerer is a user who answers a question
+    asked by asker. Optionally restricts results
+    to a provided timebin.
+    """
+    if timebin is None:
+        query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+                   FROM Post t1
+                   INNER JOIN Post t2
+                   ON t1.parent_id = t2.id
+                   WHERE t1.post_type_id = 1 AND t2.post_type_id = 2;
+                """
+        cursor.execute(query)
+    else:
+        query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+                   FROM Post t1
+                   INNER JOIN Post t2
+                   ON t1.parent_id = t2.id
+                   WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
+                   AND t1.creation_date > %(start)s
+                   AND t1.creation_date < %(end)s
+                   AND t2.creation_date > %(start)s
+                   AND t2.creation_Date < %(end)s;
+                """
+        cursor.execute(query, {'start': timebin.start, 'end': timebin.end})
+    return ((result[0], result[1]) for result in cursor)
+
 def get_top_users_by_percentile(cursor, percentile=.1):
     """Get the usernames and reputations of the top users ranked by reputation by percentile."""
     cursor.execute("SELECT count(*) FROM se_user;")
