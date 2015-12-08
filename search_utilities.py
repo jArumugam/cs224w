@@ -159,33 +159,6 @@ def users_in_post(cursor, post_id, timebin = None):
     		cursor.execute(query, {'post_id': post_id, 'start': timebin.start, 'end': timebin.end})
   	return (result[0] for result in cursor)
 
-def cau(cursor, user_id, timebin = None):
-    """
-    Returns the cumulative aggregate upvote (CAU) score for
-    a user. By default this returns the score over the
-    entire dataset. Optionally specify a timebin to
-    compute the cau score within a specific time interval.
-
-    :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the CAU score for
-    :param timebin: timebin to restrict CAU computation.
-    """
-    if timebin is None:
-        query = """SELECT SUM(score) FROM Post
-                   WHERE owner_user_id = %(user_id)s
-                   AND post_type_id = 2
-                """
-        cursor.execute(query, {'user_id': user_id})
-    else:
-        query = """SELECT SUM(score) FROM Post
-                   WHERE owner_user_id = %(user_id)s
-                   AND post_type_id = 2
-                   AND creation_date > %(start)s
-                   AND creation_date < %(end)s;
-                """
-        cursor.execute(query, {'user_id': post_id, 'start': timebin.start, 'end': timebin.end})
-    return cur.fetchone()
-
 def get_top_users_by_percentile(cursor, percentile=.1):
     """Get the usernames and reputations of the top users ranked by reputation by percentile."""
     cursor.execute("SELECT count(*) FROM se_user;")

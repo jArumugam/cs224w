@@ -4,30 +4,30 @@ import requests
 from datetime import datetime
 from search_utilities import *
 
-def elo(cursor, conn, user_id, end_date = None):
+def cau(cursor, conn, user_id, end_date = None):
     """
-    Returns the ELO score for a given user. Optionally 
+    Returns the CAU score for a given user. Optionally 
     consider only games played up until a given end date.
 
     :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the ELO score for
-    :param timebin: end_date for ELO calculation.
+    :param user_id: ID of user you want the CAU score for
+    :param timebin: end_date for CAU calculation.
     """
-    if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn, end_date)
-    return _elo(cursor, user_id, end_date)
+    if not _cau_table_exists(cursor):
+        _create_cau_table(cursor, conn, end_date)
+    return _cau(cursor, user_id, end_date)
 
-def elo_history(cursor, conn, user_id, end_date = None):
+def cau_history(cursor, conn, user_id, end_date = None):
     """
-    Returns a generator for the full ELO history for a given 
+    Returns a generator for the full CAU history for a given 
     user, across the time span of the dataset.
 
     :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the ELO score for
+    :param user_id: ID of user you want the CAU score for
     """
-    if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn, end_date)
-    return _elo_history(cursor, user_id)
+    if not _cau_table_exists(cursor):
+        _create_cau_table(cursor, conn, end_date)
+    return _cau_history(cursor, user_id)
 
 ####################################################
 ########### Private helper methods below ###########
@@ -41,26 +41,26 @@ Result = namedtuple('Result', 'id score date')
 # (player 1 result, player 2 result, question id)
 Tournament = namedtuple('Touernament', 'p1 p2 q_id')
 
-def _elo_table_exists(cursor):
+def _cau_table_exists(cursor):
     """ 
-    Checks if an elo rating table has been created.
+    Checks if an cau rating table has been created.
     """
     statement = """SELECT EXISTS 
                       (SELECT 1
                        FROM   information_schema.tables 
-                       WHERE  table_name = 'elo');
+                       WHERE  table_name = 'cau');
                 """
     cursor.execute(statement)
     return cursor.fetchone()[0]
 
-def _create_elo_table(cursor, connection, end_date = None):
+def _create_cau_table(cursor, connection, end_date = None):
     """
-    Creates the elo table and computes elo information
+    Creates the cau table and computes cau information
     for all users over the complete time range of the
     dataset.
     """
-    print "Building ELO table"
-    statement = """CREATE TABLE IF NOT EXISTS elo (
+    print "Building CAU table"
+    statement = """CREATE TABLE IF NOT EXISTS cau (
                     foobarbaz bigserial PRIMARY KEY,
                     user_id bigint DEFAULT -1,
                     rating double precision DEFAULT 1500,
@@ -72,7 +72,7 @@ def _create_elo_table(cursor, connection, end_date = None):
     # Give default ratings for all players.
     users = _users_with_creation_date(cursor)
     for (user_id, creation_date) in users:
-        _add_elo_with_date(connection.cursor(), user_id, 1500, creation_date)
+        _add_cau_with_date(connection.cursor(), user_id, 1500, creation_date)
     connection.commit()
 
     # Loop through all played games in playing order.
@@ -96,104 +96,74 @@ def _create_elo_table(cursor, connection, end_date = None):
         tournament_date = max(p1_date, p2_date)
 
         # Fetch prior ratings for each player.
-        p1_elo = _elo(connection.cursor(), p1_id)
-        p2_elo = _elo(connection.cursor(), p2_id)
+        p1_cau = _cau(connection.cursor(), p1_id)
+        p2_cau = _cau(connection.cursor(), p2_id)
 
-        # Computed expected results.
-        # Expected to win ==> Want big positive difference rating.
-        p1_expected_result = 1.0 / (10 ** (-(p1_elo - p2_elo) / 400.0) + 1)
-        p2_expected_result = 1.0 / (10 ** (-(p2_elo - p1_elo) / 400.0) + 1)
+        # Calculate new CAU rating.
+        p1_cau += normalizer * (p1_score - p2_score) 
+        p2_cau += normalizer * (p2_score - p1_score)
 
-        # Compute weight constant K for each player.
-        p1_games_played = count_posts_by_user(connection.cursor(), p1_id, tournament_date.date())
-        p2_games_played = count_posts_by_user(connection.cursor(), p2_id, tournament_date.date())
-
-        threshold = 100.0
-        K1 = 8 if p1_games_played < threshold else (1 if p2_games_played < threshold else 4)
-        K2 = 8 if p2_games_played < threshold else (1 if p1_games_played < threshold else 4)
-
-        # Update ELO ratings according to winner of tournament
-        # and expected outcome.
-        if p1_score == p2_score:
-            # Draw. Score is +0.5 for each player.
-            p1_update = 0.5 - p1_expected_result
-            p2_update = 0.5 - p2_expected_result
-        elif p1_score > p2_score:
-            # P1 wins. Score is +1 for P1 and an interpolated value
-            # between +0 and +0.5 for P2.
-            p1_score += 0.00001
-            p1_update = 1 - p1_expected_result
-            p2_update = max((p2_score - 0.5 * p1_score) / (p1_score * 0.5), 0) * 0.5 - p2_expected_result
-        else:
-            # P2 wins. Score is +1 for P2 and an interpolated value
-            # between +0 and +0.5 for P1.
-            p2_score += 0.00001
-            p1_update = max((p1_score - 0.5 * p2_score) / (p2_score * 0.5), 0) * 0.5 - p1_expected_result
-            p2_update = 1 - p2_expected_result
-        p1_elo += normalizer * K1 * p1_update 
-        p2_elo += normalizer * K2 * p2_update
-
-        # Save new ELO ratings.
-        _add_elo_with_date(connection.cursor(), p1_id, p1_elo, tournament_date)
-        _add_elo_with_date(connection.cursor(), p2_id, p2_elo, tournament_date)
+        # Save new CAU ratings.
+        _add_cau_with_date(connection.cursor(), p1_id, p1_cau, tournament_date)
+        _add_cau_with_date(connection.cursor(), p2_id, p2_cau, tournament_date)
         
         connection.commit()
-    print "Finished building ELO table"
+    print "Finished building CAU table"
 
-def _add_elo_with_date(cursor, user_id, rating, date):
+def _add_cau_with_date(cursor, user_id, rating, date):
     """
-    Adds a elo rating for a given user at a given
-    date to the elo table.
+    Adds a cau rating for a given user at a given
+    date to the cau table.
 
     ** DOES NOT COMMIT THE TRANSACTION **
     ** THIS FASTER BULK LOADING WHERE NECESSARY **
 
-    For use with ELO calculation.
+    For use with CAU calculation.
 
     :param user_id: ID of the user to add rating for.
-    :param rating: elo rating to add.
+    :param rating: cau rating to add.
     :param time: the time associated with the rating.
     """
-    statement = """INSERT INTO elo (user_id, rating, time)
+    statement = """INSERT INTO cau (user_id, rating, time)
                    VALUES (%(user_id)s, %(rating)s, %(date)s);
                 """
     cursor.execute(statement, {"user_id": user_id, "rating": rating, "date": date})
 
-def _elo_history(cursor, user_id):
+def _cau_history(cursor, user_id):
     """
-    Helper method to return elo history for a given
+    Helper method to return cau history for a given
     user.
 
-    ** ASSUMES ELO TABLE EXISTS **
+    ** ASSUMES CAU TABLE EXISTS **
 
     :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the ELO history for
+    :param user_id: ID of user you want the CAU history for
     """
     query = """SELECT rating, time
-               FROM elo
+               FROM cau
                WHERE user_id = %(user_id)s
                ORDER BY time ASC;
             """
     cursor.execute(query, {"user_id": user_id})
     return [result for result in cursor]
 
-def _elo(cursor, user_id, end_date = None):
+def _cau(cursor, user_id, end_date = None):
     """
-    Helper method to return the elo score for a given
+    Helper method to return the cau score for a given
     user. Optionally consider only games played
     up until a given end date.
 
-    ** ASSUMES ELO TABLE EXISTS **
+    ** ASSUMES CAU TABLE EXISTS **
 
-    For use with ELO calculation.
+    For use with CAU calculation.
 
     :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the ELO score for
-    :param timebin: end_date for ELO calculation.
+    :param user_id: ID of user you want the CAU score for
+    :param timebin: end_date for CAU calculation.
     """
     if end_date is None:
         query = """SELECT rating
-                   FROM elo
+                   FROM cau
                    WHERE user_id = %(user_id)s
                    ORDER BY time DESC
                    LIMIT 1;
@@ -201,7 +171,7 @@ def _elo(cursor, user_id, end_date = None):
         cursor.execute(query, {"user_id": user_id})
     else:
         query = """SELECT rating
-                   FROM elo
+                   FROM cau
                    WHERE user_id = %(user_id)s
                    AND time < %(date)s
                    ORDER BY time DESC
@@ -215,7 +185,7 @@ def _users_with_creation_date(cursor):
     Returns a generator for (user, creation_date)
     for all users.
 
-    For use with ELO calculation.
+    For use with CAU calculation.
 
     :param cursor: a Postgres database cursor
     """
@@ -237,7 +207,7 @@ def _users_by_tournament(cursor, end_date = None):
     post in the pair since that is when the
     tournament occurs.
 
-    For use with ELO calculation.
+    For use with CAU calculation.
 
     :param cursor: a Postgres database cursor
     :param timebin: a timebin to filter tournaments
