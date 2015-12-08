@@ -115,6 +115,10 @@ def pagerank(graph):
     snap.GetPageRank(graph, ranks)
     return dict((k, ranks[k]) for k in ranks)
 
+def indegree(graph):
+    indegrees = snap.TIntPrV()
+    snap.GetNodeInDegV(graph, indegrees)
+    return dict((indegrees[i].GetVal1(), indegrees[i].GetVal2()) for i in range(indegrees.Len()))
 
 def top_n_pr(pr_ranks, n):
     return list(sorted(pr_ranks.items(), reverse=True,

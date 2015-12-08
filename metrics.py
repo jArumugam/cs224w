@@ -71,6 +71,11 @@ def total_accepted_answers(userID, cur):
         result.append(total_accepted_answers_helper(cur, start_time, time, userID))
     return result
 
+def get_indegree_at_time(cur, userID, time):
+    graph = graph2.build_graph_before(cur, time)
+    indegrees = graph2.indegree(graph)
+    return indegrees[userID]
+
 def get_pagerank_at_time(cur, userID, time):
     graph = graph2.build_graph_before(cur, time)
     ranks = graph2.pagerank(graph)
@@ -88,5 +93,9 @@ def pagerank_for_user(cur, userID):
 def auth_for_user(cur, userID):
     times = percentile_normalization(userID, cur)
     return [get_auth_at_time(cur, userID, t) for t in times]
+
+def indegree_for_user(cur, userID):
+    times = percentile_normalization(userID, cur)
+    return [get_indegree_at_time(cur, userID, t) for t in times]
 
 
