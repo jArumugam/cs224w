@@ -91,7 +91,7 @@ def training_examples(cur, conn, user_ids):
     return fv, labels
 
 def main(args):
-    conn, cur = metrics.connect("Ben-han", "Ben-han")
+    conn, cur = metrics.connect("stackexchange", "kulshrax")
     user_ids = search_utilities.get_experts()
     data, labels = training_examples(cur, conn, user_ids)
     ml.logistic_test(data, labels, data, labels)
