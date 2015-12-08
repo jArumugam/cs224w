@@ -23,6 +23,11 @@ def results(cursor):
             break
         yield result
 
+def get_start_time(userID, cur):
+    query = "select creation_date from se_user where id = %(id)s"
+    cur.execute(query, {'id': userID})
+    return [i[0] for i in results(cur)][0]
+
 def percentile_normalization(userID, cur):
     """returns a vector of end times for percentiles 0, 10, 20,...100. This end time should be used inclusively"""
     percentiles = [i*0.1 for i in range(0, 11)]
@@ -30,9 +35,7 @@ def percentile_normalization(userID, cur):
     query1 = "select creation_date from post where owner_user_id = %(id)s and (post_type_id = 1 or post_type_id = 2) order by creation_date"
     cur.execute(query1, {'id': userID})
     posts = [i[0] for i in results(cur)]
-    query2 = "select creation_date from se_user where id = %(id)s"
-    cur.execute(query2, {'id': userID})
-    start = [i[0] for i in results(cur)][0]
+    start = get_start_time(userID, cur)
     for p in percentiles:
         x = int(len(posts) * p)
         if x == 0:
@@ -41,4 +44,15 @@ def percentile_normalization(userID, cur):
             times.append(posts[x-1])
     return times   
 
+def total_answers_helper(cur, start_time, end_time, userID):
+    query = "select count(*) from post where owner_user_id = %(id)s and post_type_id = 2 and creation_date >= %(start_time)s and creation_date <= %(end_time)s"
+    cur.execute(query, {'start_time': start_time, 'end_time': end_time, 'id': userID})
+    return int([i[0] for i in results(cur)][0])
 
+def total_answers(userID, cur):
+    times = percentile_normalization(userID, cur)
+    result = []
+    start_time = get_start_time(userID, cur)
+    for time in times:
+        result.append(total_answers_helper(cur, start_time, time, userID))
+    return result
