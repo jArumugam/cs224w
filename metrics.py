@@ -35,7 +35,6 @@ def percentile_normalization(userID, cur):
     start = [i[0] for i in results(cur)][0]
     for p in percentiles:
         x = int(len(posts) * p)
-        print x
         if x == 0:
             times.append(start)
         else:
