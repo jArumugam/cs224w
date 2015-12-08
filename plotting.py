@@ -108,34 +108,39 @@ def plot_distributions():
 	plt.savefig("output/answers_distribution.png")
 
 def main(args):
-	conn, cur = connect("Ben-han", "Ben-han")
+	conn, cur = connect("cooking", "Ben-han")
 	experts = search_utilities.get_experts()
 	nonexperts = search_utilities.get_nonexperts()
 
+	# plot_individual_elo(cur, conn, 95, 'red')
+	# plt.savefig("output/codegolf.png")
+	# plt.show()
+
 	# Expert plots
-	print "Plotting average expert Auth"
-	plot_avg_auth(cur, experts, 'blue')
-	print "Plotting average expert PageRank"
-	plot_avg_pagerank(cur, experts, 'green')
+	# print "Plotting average expert Auth"
+	# plot_avg_auth(cur, experts, 'blue')
+	# print "Plotting average expert PageRank"
+	# plot_avg_pagerank(cur, experts, 'green')
 	print "Plotting average expert ELO"
-	plot_avg_elo(cur, conn, experts, 'red')
-	print "Plotting average expert Cau"
-	plot_avg_cau(cur, conn, experts, 'purple')
-	plt.legend(loc = 4)
-	plt.savefig("output/expert_combined.png")
-	plt.show()
+	plot_avg_elo(cur, conn, experts, 'blue')
+	# print "Plotting average expert Cau"
+	# plot_avg_cau(cur, conn, experts, 'purple')
+	# plt.legend(loc = 4)
+	# plt.savefig("output/expert_combined.png")
+	# plt.show()
 
 	# Non-expert plots
-	print "Plotting average nonexpert Auth"
-	plot_avg_auth(cur, nonexperts, 'blue')
-	print "Plotting average nonexpert PageRank"
-	plot_avg_pagerank(cur, nonexperts, 'green')
+	# print "Plotting average nonexpert Auth"
+	# plot_avg_auth(cur, nonexperts, 'blue')
+	# print "Plotting average nonexpert PageRank"
+	# plot_avg_pagerank(cur, nonexperts, 'green')
 	print "Plotting average nonexpert ELO"
 	plot_avg_elo(cur, conn, nonexperts, 'red')
-	print "Plotting average nonexpert Cau"
-	plot_avg_cau(cur, conn, nonexperts, 'purple')
-	plt.legend(loc = 4)
-	plt.savefig("output/nonexpert_combined.png")
+	# print "Plotting average nonexpert Cau"
+	# plot_avg_cau(cur, conn, nonexperts, 'purple')
+	# plt.legend(loc = 4)
+
+	plt.savefig("output/expert_nonexpert_elo.png")
 	plt.show()
 
 if __name__ == '__main__':

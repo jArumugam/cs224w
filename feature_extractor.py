@@ -94,7 +94,7 @@ def main(args):
     conn, cur = metrics.connect("Ben-han", "Ben-han")
     user_ids = search_utilities.get_experts() + search_utilities.get_nonexperts()
     data, labels = training_examples(cur, conn, user_ids)
-    ml.logistic_test(data, labels, data, labels)
+    ml.plot_pca(data, labels)
 
 if __name__ == '__main__':
     main(sys.argv)

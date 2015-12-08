@@ -69,14 +69,26 @@ def _create_elo_table(cursor, connection, end_date = None):
     cursor.execute(statement)
     connection.commit()
 
+    statement = """CREATE TABLE IF NOT EXISTS cau (
+                    foobarbaz bigserial PRIMARY KEY,
+                    user_id bigint DEFAULT -1,
+                    rating double precision DEFAULT 1500,
+                    time timestamp DEFAULT NULL);
+                """
+    cursor.execute(statement)
+    connection.commit()
+
     # Give default ratings for all players.
     users = _users_with_creation_date(cursor)
     for (user_id, creation_date) in users:
         _add_elo_with_date(connection.cursor(), user_id, 1500, creation_date)
+        _add_cau_with_date(connection.cursor(), user_id, 1500, creation_date)
     connection.commit()
 
     # Loop through all played games in playing order.
-    for tournament in _users_by_tournament(cursor, end_date):
+    counter = 0
+    rowcount, tournaments = _users_by_tournament(cursor, end_date)
+    for tournament in tournaments:
         # Unpack tournament details.
         p1_id = tournament.p1.id
         p1_score = tournament.p1.score
@@ -142,8 +154,24 @@ def _create_elo_table(cursor, connection, end_date = None):
         # Save new ELO ratings.
         _add_elo_with_date(connection.cursor(), p1_id, p1_elo, tournament_date)
         _add_elo_with_date(connection.cursor(), p2_id, p2_elo, tournament_date)
+
+        # Fetch prior ratings for each player.
+        p1_cau = _cau(connection.cursor(), p1_id)
+        p2_cau = _cau(connection.cursor(), p2_id)
+
+        # Calculate new CAU rating.
+        p1_cau += normalizer * (p1_score - p2_score) 
+        p2_cau += normalizer * (p2_score - p1_score)
+
+        # Save new CAU ratings.
+        _add_cau_with_date(connection.cursor(), p1_id, p1_cau, tournament_date)
+        _add_cau_with_date(connection.cursor(), p2_id, p2_cau, tournament_date)
         
-        connection.commit()
+        counter += 1
+        if counter % 100 == 0:
+            connection.commit()
+        print "Progress: %f" % (float(counter) / rowcount)
+    connection.commit()
     print "Finished building ELO table"
 
 def _add_elo_with_date(cursor, user_id, rating, date):
@@ -161,6 +189,25 @@ def _add_elo_with_date(cursor, user_id, rating, date):
     :param time: the time associated with the rating.
     """
     statement = """INSERT INTO elo (user_id, rating, time)
+                   VALUES (%(user_id)s, %(rating)s, %(date)s);
+                """
+    cursor.execute(statement, {"user_id": user_id, "rating": rating, "date": date})
+
+def _add_cau_with_date(cursor, user_id, rating, date):
+    """
+    Adds a cau rating for a given user at a given
+    date to the cau table.
+
+    ** DOES NOT COMMIT THE TRANSACTION **
+    ** THIS FASTER BULK LOADING WHERE NECESSARY **
+
+    For use with CAU calculation.
+
+    :param user_id: ID of the user to add rating for.
+    :param rating: cau rating to add.
+    :param time: the time associated with the rating.
+    """
+    statement = """INSERT INTO cau (user_id, rating, time)
                    VALUES (%(user_id)s, %(rating)s, %(date)s);
                 """
     cursor.execute(statement, {"user_id": user_id, "rating": rating, "date": date})
@@ -215,6 +262,40 @@ def _elo(cursor, user_id, end_date = None):
                 """
         cursor.execute(query, {"user_id": user_id, "date": end_date})
     return cursor.fetchone()[0]
+
+def _cau(cursor, user_id, end_date = None):
+    """
+    Helper method to return the cau score for a given
+    user. Optionally consider only games played
+    up until a given end date.
+
+    ** ASSUMES CAU TABLE EXISTS **
+
+    For use with CAU calculation.
+
+    :param cursor: a Postgres database cursor
+    :param user_id: ID of user you want the CAU score for
+    :param timebin: end_date for CAU calculation.
+    """
+    if end_date is None:
+        query = """SELECT rating
+                   FROM cau
+                   WHERE user_id = %(user_id)s
+                   ORDER BY time DESC
+                   LIMIT 1;
+                """
+        cursor.execute(query, {"user_id": user_id})
+    else:
+        query = """SELECT rating
+                   FROM cau
+                   WHERE user_id = %(user_id)s
+                   AND time <= %(date)s
+                   ORDER BY time DESC
+                   LIMIT 1;
+                """
+        cursor.execute(query, {"user_id": user_id, "date": end_date})
+    return cursor.fetchone()[0]
+
 
 def _users_with_creation_date(cursor):
     """
@@ -288,6 +369,6 @@ def _users_by_tournament(cursor, end_date = None):
                    ORDER BY GREATEST(a1.creation_date, a2.creation_date);
                 """
         cursor.execute(query, {"date": end_date})
-    return (Tournament(Result(result[0], result[1], result[2]), 
-                       Result(result[3], result[4], result[5]), 
-                       result[6]) for result in cursor)
+    return cursor.rowcount, (Tournament(Result(result[0], result[1], result[2]), 
+                                        Result(result[3], result[4], result[5]), 
+                                        result[6]) for result in cursor)

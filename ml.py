@@ -2,7 +2,7 @@ from __future__ import division
 import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.decomposition import PCA
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 
 
 def plot_pca(samples, labels):
@@ -14,11 +14,15 @@ def plot_pca(samples, labels):
     negative_x = [p for p, l in zip(points[:,0], labels) if l == 0]
     negative_y = [p for p, l in zip(points[:,1], labels) if l == 0]
 
+    plt.xscale("log")
+    plt.yscale("log")
+
     negative = plt.scatter(negative_x, negative_y, color='blue', alpha=.5)
     positive = plt.scatter(positive_x, positive_y, color='red', alpha=.5)
     
     legend_points = (negative, positive)
     legend_labels = ('Non-expert', 'Expert')
+
     plt.legend(legend_points, legend_labels)
 
     plt.show()
@@ -26,7 +30,7 @@ def plot_pca(samples, labels):
 
 def logistic_test(train_data, train_labels, test_data, test_labels, cv=False):
     # Perform logistic regression.
-    clf = LogisticRegressionCV if cv else LogisticRegression()
+    clf = LogisticRegressionCV() if cv else LogisticRegression()
     clf.fit(train_data, train_labels)
     predicted_labels = clf.predict(test_data)
 

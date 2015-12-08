@@ -93,7 +93,6 @@ def build_graph(cur):
     add_edges(cur, graph)
     return graph
 
-
 def build_graph_before(cur, cutoff):
     if type(cutoff) == 'str':
         cutoff = parse(cutoff)

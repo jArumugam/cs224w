@@ -2,6 +2,7 @@
 
 import psycopg2
 import numpy as np
+import search_utilities
 
 DB_NAME = "Ben-han"
 DB_USER = "Ben-han"
@@ -22,20 +23,19 @@ def results(cursor):
 
 def sample(cur, sample_size = 50):
     """Samples num users out of the non-expert population that has asked or answered at least one question (active)"""
-    query1 = "select id from se_user where id <> -1"
-    cur.execute(query1)
-    users = [i[0] for i in results(cur)]
-    experts = [683, 98, 755, 39, 9550, 31, 41, 157, 472, 8321]
-    active_nonexperts = []
-    for user in users:
-        if user in experts:
-            continue
-        query2 = "select count(*) from post x, se_user y where owner_user_id = %(id)s and y.id = %(id)s and (post_type_id = 1 or post_type_id = 2) and reputation > 1"
-        cur.execute(query2, {'id': user})
-        num = int([i[0] for i in results(cur)][0])
-        if num > 0: active_nonexperts.append(user)
-    result = np.random.choice(active_nonexperts, sample_size, False)
-    return list(result)
+    experts = tuple(search_utilities.get_experts())
+    query1 = """SELECT u.id
+                FROM se_user u
+                INNER JOIN post p
+                ON p.owner_user_id = u.id
+                WHERE  u.id <> -1
+                AND u.id NOT IN %(experts)s
+                AND p.post_type_id = 2
+                GROUP BY u.id HAVING Count(*) > 1
+                ORDER BY random()
+                LIMIT %(limit)s;"""
+    cur.execute(query1, {"experts": experts, "limit": sample_size})
+    return list(result[0] for result in cur)
 
 def view_reputations(sample, cur):
     reputations = []
