@@ -37,7 +37,7 @@ def add_nodes(cur, graph):
 
 def add_nodes_before(cur, graph, cutoff=None):
     """Add users to graph as nodes."""
-    cur.execute("SELECT id FROM se_user WHERE creation_date < %s;", (cutoff,))
+    cur.execute("SELECT id FROM se_user WHERE creation_date <= %s;", (cutoff,))
     for row in cur:
         user_id = row[0]
 
@@ -76,8 +76,8 @@ def add_edges_before(cur, graph, cutoff):
                INNER JOIN Post t2
                ON t1.id = t2.parent_id
                WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
-               AND t1.creation_date < %(cutoff)s
-               AND t2.creation_date < %(cutoff)s;
+               AND t1.creation_date <= %(cutoff)s
+               AND t2.creation_date <= %(cutoff)s;
             """
 
     cur.execute(query, {'cutoff': cutoff})
