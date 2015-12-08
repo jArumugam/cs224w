@@ -6,13 +6,14 @@ from data_graph import *
 import psycopg2
 import matplotlib.pyplot as plt
 import numpy as np	
+from dateutil.parser import parse
 
 import elo
 import time
 
 def plot_elo(cur, conn, user_id, color):
 	# Fetch elo data for the given user.
-	history = elo.elo_history(cur, conn, user_id)
+	history = elo.elo_history(cur, conn, user_id, parse('2010-1-1'))
 	x = []
 	y = []
 
@@ -51,8 +52,8 @@ def plot_distributions():
 
 def main(args):
 	# Plot elo graph for top 8 users by post count.
-	conn, cur = connect("Ben-han", "Ben-han")
-	user_ids = [2131] #[683, 98, 755, 9550, 39, 699, 8321, 4287]
+	conn, cur = connect("kulshrax", "kulshrax")
+	user_ids = [22656, 29407, 157882, 501557]
 	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
 	for i in range(0, len(user_ids)):
 		plot_elo(cur, conn, user_ids[i], colors[i])
