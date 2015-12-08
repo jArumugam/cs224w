@@ -3,18 +3,16 @@
 from __future__ import division
 from collections import Counter
 from data_graph import *
-import psycopg2
-import matplotlib.pyplot as plt
-import numpy as np	
-from dateutil.parser import parse
 
-import elo
-import cau
-import time
+import matplotlib.pyplot as plt
+import search_utilities
+import metrics;
+import time;
+import cau;
 
 def plot_elo(cur, conn, user_id, color):
 	# Fetch elo data for the given user.
-	history = elo.elo_history(cur, conn, user_id, parse('2010-1-1'))
+	history = elo.elo_history(cur, conn, user_id)
 	x = []
 	y = []
 
@@ -64,6 +62,42 @@ def plot_cau(cur, conn, user_id, color):
 	# Plot.
 	plt.scatter(x, y, color=color)
 
+def plot_avg_auth(cur, user_ids, color, filename = "output/avg_auth.png"):
+	avg_auth = [0] * len(metrics.percentiles)
+	for user_id in user_ids:
+		user_auth = metrics.auth_for_user(cur, user_id)
+		avg_auth = [sum(x) for x in zip(avg_auth, user_auth)]
+	avg_auth = [total / len(metrics.percentiles) for total in avg_auth]
+	plt.scatter(metrics.percentiles, avg_auth, color = color, label = "Auth")
+	plt.savefig(filename)
+
+def plot_avg_pagerank(cur, user_ids, color, filename = "output/avg_pagerank.png"):
+	avg_rank = [0] * len(metrics.percentiles)
+	for user_id in user_ids:
+		user_rank = metrics.pagerank_for_user(cur, user_id)
+		avg_rank = [sum(x) for x in zip(avg_rank, user_rank)]
+	avg_rank = [total / len(metrics.percentiles) for total in avg_rank]
+	plt.scatter(metrics.percentiles, avg_rank, color = color, label = "PageRank")
+	plt.savefig(filename)
+
+def plot_avg_elo(cur, conn, user_ids, color, filename = "output/avg_elo.png"):
+	avg_elo = [0] * len(metrics.percentiles)
+	for user_id in user_ids:
+ 		user_elo = metrics.elo_for_user(cur, conn, user_id)
+ 		avg_elo = [sum(x) for x in zip(avg_elo, user_elo)]
+ 	avg_elo = [total / len(metrics.percentiles) for total in avg_elo]
+	plt.scatter(metrics.percentiles, avg_elo, color = color, label = "ELO")
+	plt.savefig(filename)
+
+def plot_avg_cau(cur, conn, user_ids, color, filename = "output/avg_cau.png"):
+	avg_cau = [0] * len(metrics.percentiles)
+	for user_id in user_ids:
+ 		user_cau = metrics.cau_for_user(cur, conn, user_id)
+ 		avg_cau = [sum(x) for x in zip(avg_cau, user_cau)]
+ 	avg_cau = [total / len(metrics.percentiles) for total in avg_cau]
+	plt.scatter(metrics.percentiles, avg_cau, color = color, label = "CAU")	
+	plt.savefig(filename)
+
 def plot_distributions():
 	questions = Counter({0: 17663, 1: 3215, 2: 703, 3: 241, 4: 132, 5: 83, 6: 44, 7: 40, 8: 26, 9: 18, 10: 17, 11: 14, 12: 8, 13: 6, 16: 6, 18: 5, 22: 5, 15: 4, 19: 4, 14: 3, 20: 3, 29: 3, 17: 2, 23: 2, 24: 2, 26: 2, 31: 2, 21: 1, 25: 1, 27: 1, 30: 1, 34: 1, 40: 1, 41: 1, 46: 1, 50: 1, 79: 1})
 	plt.xscale('log')
@@ -78,13 +112,45 @@ def plot_distributions():
 	plt.savefig("output/answers_distribution.png")
 
 def main(args):
-	# Plot cau graph for top 8 users by post count.
 	conn, cur = connect("Ben-han", "Ben-han")
-	user_ids = [683, 98, 755, 9550, 39, 699, 8321, 4287]
-	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
-	for i in range(0, len(user_ids)):
-		plot_elo(cur, conn, user_ids[i], colors[i])
-	plt.savefig("output/elo.png")
+	experts = search_utilities.get_experts()
+	nonexperts = search_utilities.get_nonexperts()
+	
+	print metrics.percentile_normalization(1280, cur)
+
+	# Plot cau graph for top 8 users by post count.
+	# conn, cur = connect("Ben-han", "Ben-han")
+	# user_ids = [683, 98, 755, 9550, 39, 699, 8321, 4287]
+	# colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
+	# for i in range(0, len(user_ids)):
+	# 	plot_cau(cur, conn, user_ids[i], colors[i])
+	# plt.savefig("output/elo.png")
+	# plt.show()
+
+	# Expert plots
+	# print "Plotting average expert Auth"
+	# plot_avg_auth(cur, experts, 'blue', "output/expert_auth.png")
+	# print "Plotting average expert PageRank"
+	# plot_avg_pagerank(cur, experts, 'green', "output/expert_pagerank.png")
+	print "Plotting average expert ELO"
+	plot_avg_elo(cur, conn, experts, 'red', "output/expert_elo.png")
+	print "Plotting average expert Cau"
+	plot_avg_cau(cur, conn, experts, 'purple', "output/expert_cau.png")
+	plt.legend(loc = 4)
+	plt.savefig("output/expert_combined.png")
+	plt.show()
+
+	# Non-expert plots
+	#print "Plotting average nonexpert Auth"
+	#plot_avg_auth(cur, nonexperts, 'blue', "output/nonexpert_auth.png")
+	#print "Plotting average nonexpert PageRank"
+	#plot_avg_pagerank(cur, nonexperts, 'green', "output/nonexpert_pagerank.png")
+	print "Plotting average nonexpert ELO"
+	plot_avg_elo(cur, conn, nonexperts, 'red', "output/nonexpert_elo.png")
+	print "Plotting average nonexpert Cau"
+	plot_avg_cau(cur, conn, nonexperts, 'purple', "output/nonexpert_cau.png")
+	plt.legend(loc = 4)
+	plt.savefig("output/nonexpert_combined.png")
 	plt.show()
 
 if __name__ == '__main__':

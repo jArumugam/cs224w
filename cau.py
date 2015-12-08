@@ -173,7 +173,7 @@ def _cau(cursor, user_id, end_date = None):
         query = """SELECT rating
                    FROM cau
                    WHERE user_id = %(user_id)s
-                   AND time < %(date)s
+                   AND time <= %(date)s
                    ORDER BY time DESC
                    LIMIT 1;
                 """

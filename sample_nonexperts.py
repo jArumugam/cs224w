@@ -3,8 +3,8 @@
 import psycopg2
 import numpy as np
 
-DB_NAME = "stackexchangedb"
-DB_USER = "postgres"
+DB_NAME = "Ben-han"
+DB_USER = "Ben-han"
 
 def connect(db=DB_NAME, user=DB_USER):
     """Connect to the specified Postgres database as the specified user."""

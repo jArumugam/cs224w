@@ -14,7 +14,7 @@ def elo(cursor, conn, user_id, end_date = None):
     :param timebin: end_date for ELO calculation.
     """
     if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn, end_date)
+        _create_elo_table(cursor, conn)
     return _elo(cursor, user_id, end_date)
 
 def elo_history(cursor, conn, user_id, end_date = None):
@@ -26,7 +26,7 @@ def elo_history(cursor, conn, user_id, end_date = None):
     :param user_id: ID of user you want the ELO score for
     """
     if not _elo_table_exists(cursor):
-        _create_elo_table(cursor, conn, end_date)
+        _create_elo_table(cursor, conn)
     return _elo_history(cursor, user_id)
 
 ####################################################
@@ -203,7 +203,7 @@ def _elo(cursor, user_id, end_date = None):
         query = """SELECT rating
                    FROM elo
                    WHERE user_id = %(user_id)s
-                   AND time < %(date)s
+                   AND time <= %(date)s
                    ORDER BY time DESC
                    LIMIT 1;
                 """
