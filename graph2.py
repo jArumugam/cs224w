@@ -70,7 +70,7 @@ def add_edges_before(cur, graph, cutoff):
                FROM Post t1
                INNER JOIN Post t2
                ON t1.id = t2.parent_id
-               WHERE t1.post_type_id = 1 AND t2.post_type_id = 2;
+               WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
                AND t1.creation_date < %(cutoff)s
                AND t2.creation_date < %(cutoff)s;
             """
@@ -93,7 +93,7 @@ def build_graph_before(cur, cutoff):
     if type(cutoff) == 'str':
         cutoff = parse(cutoff)
     graph = snap.TNGraph.New()
-    add_nodes_before(cur, graph, cutoff)
+    add_nodes(cur, graph)
     add_edges_before(cur, graph, cutoff)
     return graph
 
@@ -112,17 +112,23 @@ def pagerank(graph):
 
 
 def top_n_pr(pr_ranks, n):
-    return list(sorted(ranks.items(), reverse=True, key = lambda x: x[1]))[:n]
+    return list(sorted(pr_ranks.items(), reverse=True,
+            key = lambda x: x[1]))[:n]
 
 
 def top_n_auths(hits_ranks, n):
-    return list(sorted(hits_ranks.items(),
-            reverse=True, key = lambda x: x[1][1]))[:n]
+    return list(sorted(hits_ranks.items(), reverse=True,
+            key = lambda x: x[1][1]))[:n]
+
 
 def top_n_hubs(hits_ranks, n):
-    return list(sorted(hitsranks.items(),
+    return list(sorted(hits_ranks.items(),
             reverse=True, key = lambda x: x[1][0]))[:n]
 
+def get_metrics():
+    conn, cur = connect()
+    graph = build_graph(cur)
+    return graph, pagerank(graph), hits(graph)
 
 def main(argv):
     db_name = DB_NAME
