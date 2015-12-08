@@ -9,6 +9,7 @@ import numpy as np
 from dateutil.parser import parse
 
 import elo
+import cau
 import time
 
 def plot_elo(cur, conn, user_id, color):
@@ -18,6 +19,32 @@ def plot_elo(cur, conn, user_id, color):
 	y = []
 
 	# Calculate moving average of elo data if possible.
+	window_size = 8
+	if len(history) > window_size:
+		for i in range(0, len(history) - window_size):
+			y_avg = 0
+			x_avg = 0
+			for j in range(0, window_size):
+				entry = history[i + j]
+				y_avg += entry[0] / float(window_size)
+				x_avg += time.mktime(entry[1].timetuple()) / float(window_size)
+			x.append(x_avg)
+			y.append(y_avg)
+	else:
+		for entry in history:
+			x.append(time.mktime(entry[1].timetuple()))
+			y.append(entry[0])
+
+	# Plot.
+	plt.scatter(x, y, color=color)
+
+def plot_cau(cur, conn, user_id, color):
+	# Fetch cau data for the given user.
+	history = cau.cau_history(cur, conn, user_id)
+	x = []
+	y = []
+
+	# Calculate moving average of cau data if possible.
 	window_size = 8
 	if len(history) > window_size:
 		for i in range(0, len(history) - window_size):
@@ -51,9 +78,9 @@ def plot_distributions():
 	plt.savefig("output/answers_distribution.png")
 
 def main(args):
-	# Plot elo graph for top 8 users by post count.
-	conn, cur = connect("kulshrax", "kulshrax")
-	user_ids = [22656, 29407, 157882, 501557]
+	# Plot cau graph for top 8 users by post count.
+	conn, cur = connect("Ben-han", "Ben-han")
+	user_ids = [683, 98, 755, 9550, 39, 699, 8321, 4287]
 	colors = ['black', 'blue', 'red', 'orange', 'yellow', 'green', 'purple', 'gray']
 	for i in range(0, len(user_ids)):
 		plot_elo(cur, conn, user_ids[i], colors[i])

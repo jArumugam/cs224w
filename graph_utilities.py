@@ -28,13 +28,10 @@ def qa_graph(conn, cur, directed = True, timebin = None):
         graph.AddNode(user_id)
 
     # Build edges
-    questions = search_utilities.posts_by_type(conn.cursor(), 1)
-    for (post_id, creator_id) in questions:
-        answerers = search_utilities.users_in_post(conn.cursor(), post_id, timebin = timebin)
-        for user_id in answerers:
-            if not creator_id or not user_id:
-                continue
-            graph.AddEdge(creator_id, user_id)
+    pairs = search_utilities.asker_answerer_pairs(cursor, timebin)
+    for (asker, answerer) in pairs:
+        if not asker or not answerer:
+            graph.AddEdge(asker, answerer)
 
     return graph
 

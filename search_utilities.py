@@ -159,32 +159,34 @@ def users_in_post(cursor, post_id, timebin = None):
     		cursor.execute(query, {'post_id': post_id, 'start': timebin.start, 'end': timebin.end})
   	return (result[0] for result in cursor)
 
-def cau(cursor, user_id, timebin = None):
+def asker_answerer_pairs(cursor, timebin = None):
     """
-    Returns the cumulative aggregate upvote (CAU) score for
-    a user. By default this returns the score over the
-    entire dataset. Optionally specify a timebin to
-    compute the cau score within a specific time interval.
-
-    :param cursor: a Postgres database cursor
-    :param user_id: ID of user you want the CAU score for
-    :param timebin: timebin to restrict CAU computation.
+    Returns a generator for (asker, answerer) pairs
+    where answerer is a user who answers a question
+    asked by asker. Optionally restricts results
+    to a provided timebin.
     """
     if timebin is None:
-        query = """SELECT SUM(score) FROM Post
-                   WHERE owner_user_id = %(user_id)s
-                   AND post_type_id = 2
+        query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+                   FROM Post t1
+                   INNER JOIN Post t2
+                   ON t1.parent_id = t2.id
+                   WHERE t1.post_type_id = 1 AND t2.post_type_id = 2;
                 """
-        cursor.execute(query, {'user_id': user_id})
+        cursor.execute(query)
     else:
-        query = """SELECT SUM(score) FROM Post
-                   WHERE owner_user_id = %(user_id)s
-                   AND post_type_id = 2
-                   AND creation_date > %(start)s
-                   AND creation_date < %(end)s;
+        query = """SELECT DISTINCT t1.owner_user_id, t2.owner_user_id
+                   FROM Post t1
+                   INNER JOIN Post t2
+                   ON t1.parent_id = t2.id
+                   WHERE t1.post_type_id = 1 AND t2.post_type_id = 2
+                   AND t1.creation_date > %(start)s
+                   AND t1.creation_date < %(end)s
+                   AND t2.creation_date > %(start)s
+                   AND t2.creation_Date < %(end)s;
                 """
-        cursor.execute(query, {'user_id': post_id, 'start': timebin.start, 'end': timebin.end})
-    return cur.fetchone()
+        cursor.execute(query, {'start': timebin.start, 'end': timebin.end})
+    return ((result[0], result[1]) for result in cursor)
 
 def get_top_users_by_percentile(cursor, percentile=.1):
     """Get the usernames and reputations of the top users ranked by reputation by percentile."""
