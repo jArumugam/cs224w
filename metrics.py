@@ -58,6 +58,19 @@ def total_answers(userID, cur):
         result.append(total_answers_helper(cur, start_time, time, userID))
     return result
 
+def total_accepted_answers_helper(cur, start_time, end_time, userID):
+    query = "select count(x.id) from post x, post y where y.accepted_answer_id = x.id and x.owner_user_id = %(id)s and x.post_type_id = 2 and x.creation_date >= %(start_time)s and x.creation_date <= %(end_time)s"
+    cur.execute(query, {'start_time': start_time, 'end_time': end_time, 'id': userID})
+    return int([i[0] for i in results(cur)][0])
+
+def total_accepted_answers(userID, cur):
+    times = percentile_normalization(userID, cur)
+    result = []
+    start_time = get_start_time(userID, cur)
+    for time in times:
+        result.append(total_accepted_answers_helper(cur, start_time, time, userID))
+    return result
+
 def get_pagerank_at_time(cur, userID, time):
     graph = graph2.build_graph_before(cur, time)
     ranks = graph2.pagerank(graph)
