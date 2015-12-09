@@ -29,6 +29,7 @@ def results(cursor):
         yield result
 
 def get_start_time(userID, cur):
+    print userID
     query = "select creation_date from se_user where id = %(id)s"
     cur.execute(query, {'id': userID})
     return [i[0] for i in results(cur)][0]

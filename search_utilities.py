@@ -111,6 +111,23 @@ def count_posts_by_user(cursor, user_id, end_date = None):
         cursor.execute(query, {'user_id': user_id, 'end': end_date})
     return cursor.fetchone()[0]
 
+def count_users_by_reputation(cursor):
+    """
+    Returns a generator of of tuples (reputation, user count) 
+    indicating a reputation score and the number of users with 
+    that reputation.
+
+    :param cursor: a Postgres database cursor
+    """
+    query = """SELECT reputation, Count(*) 
+               FROM se_user 
+               GROUP BY reputation
+               ORDER BY reputation DESC
+               LIMIT 720;
+            """
+    cursor.execute(query)
+    return ((result[0], result[1]) for result in cursor)
+
 def users_above_threshold(cursor, threshold):
   	"""
   	Returns a generator for IDs for users with 
@@ -209,7 +226,10 @@ def get_top_users_by_num(cursor, num = 10):
 def get_experts():
     # CS Stack Exchange: return [683, 98, 755, 39, 9550, 31, 41, 157, 472, 8321]
 
-    # Code golf - This is the top 1%
+    # Cooking Exchange short version - For graph generation, etc.
+    # return [14401, 4638, 41, 67, 60, 20183, 4194, 2001, 1672, 1393, 3203, 426]
+
+    # Cooking Exchange long version - This is the top 1%. For training data.
     return [14401, 4638, 41, 67, 60, 20183, 4194, 2001, 1672, 1393, 3203, 426, 
             6345, 19707, 1259, 218, 1816, 1374, 7180, 183, 160, 6279, 15, 641, 4580, 
             3348, 231, 210, 364, 446, 3649, 18453, 611, 1236, 2047, 2909, 115, 15018, 
@@ -231,7 +251,10 @@ def get_experts():
 def get_nonexperts():
     # CS Stack Exchange: return [22825, 26997, 10235, 20922, 17953, 4766, 1280, 1820, 24256, 6518, 12901, 1362, 19347, 16190, 24037, 14379, 21365, 4421, 10086, 7934, 15249, 600, 20898, 17031, 26450, 12933, 25864, 2406, 1655, 8551, 7432, 16709, 17338, 9667, 4631, 17999, 19809, 25909, 11412, 10252, 18102, 14466, 4864, 9565, 7974, 9994, 9741, 4547, 25831, 24188]
 
-    # Code golf
+    # Cooking Exchange short version.
+    # return [1687, 11077, 14978, 22764, 7574, 2805, 459, 26186, 8582, 6809, 29789]
+
+    # Cooking Exchange long version.
     return [1687, 11077, 14978, 22764, 7574, 2805, 459, 26186, 8582, 6809, 29789, 
             21575, 7348, 22597, 2591, 10078, 688, 2215, 12608, 31388, 9935, 1798, 5212, 
             24641, 27093, 7439, 27097, 18762, 19842, 2289, 33210, 10687, 3832, 27288, 184, 

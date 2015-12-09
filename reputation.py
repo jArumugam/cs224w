@@ -6,8 +6,8 @@ import psycopg2
 import matplotlib.pyplot as plt
 import numpy as np
 
-DB_NAME = "kulshrax"
-DB_USER = "kulshrax"
+DB_NAME = "cooking"
+DB_USER = "Ben-han"
 
 def connect(db=DB_NAME, user=DB_USER):
     """Connect to the specified Postgres database as the specified user."""
@@ -41,6 +41,9 @@ def main():
     plt.xscale('log')
     plt.yscale('log')
     plt.scatter(map(lambda x: x+1, counts.keys()), counts.values())
+    plt.suptitle('Users vs. reputation')
+    plt.xlabel('Reputation (binned to nearest 100)')
+    plt.ylabel('Users')
     plt.show()
 
 

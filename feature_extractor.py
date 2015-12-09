@@ -36,6 +36,8 @@ purpose of this project we will assume that reputation
 is ground truth for expertise. We define experts to be
 the top 10 percentile of users by StackExchange reputation.
 """
+from random import shuffle
+
 import sys
 import metrics
 import search_utilities
@@ -80,10 +82,13 @@ def training_examples(cur, conn, user_ids):
     """
     fv = []
     labels = []
+    counter = 0
     for user_id in user_ids:
+        counter += 1
+        print "Training example building progress: %f" % (float(counter) / len(user_ids))
         uv = []
-        uv += auth_scores(cur, user_id)
-        uv += pagerank_scores(cur, user_id)
+        #uv += auth_scores(cur, user_id)
+        #uv += pagerank_scores(cur, user_id)
         uv += elo_scores(cur, conn, user_id)
         uv += cau_scores(cur, conn, user_id)
         fv.append(uv)
@@ -91,10 +96,17 @@ def training_examples(cur, conn, user_ids):
     return fv, labels
 
 def main(args):
-    conn, cur = metrics.connect("Ben-han", "Ben-han")
+    conn, cur = metrics.connect("cooking", "Ben-han")
     user_ids = search_utilities.get_experts() + search_utilities.get_nonexperts()
+    shuffle(user_ids)
     data, labels = training_examples(cur, conn, user_ids)
-    ml.plot_pca(data, labels)
+
+    train_data = data[:len(data)/2]
+    train_labels = labels[:len(labels)/2]
+    test_data = data[len(data)/2:]
+    test_labels = labels[len(labels)/2:]
+    ml.logistic_test(train_data, train_labels, train_data, train_labels, cv=True)
+    # ml.plot_pca(data, labels)
 
 if __name__ == '__main__':
     main(sys.argv)
